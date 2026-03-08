@@ -92,16 +92,16 @@ and update DNS). See `infra/scripts/rollback.sh`.
 
 ---
 
-## DR-006 – HTTP 429 for quota exceeded (not 200 + error body)
+## DR-006 – Preserve client-compatible quota contract
 **Date:** 2026-03  
 **Status:** Active  
-**Decision:** Return HTTP 429 (Too Many Requests) when the FatSecret quota is
-exceeded, rather than HTTP 200 with `{ error: "quota_exceeded" }` in the body.
+**Decision:** Return HTTP 200 with `{ error: "quota_exceeded" }` when the
+FatSecret quota is exceeded.
 
 **Rationale:**
-- HTTP 429 is semantically correct and tooling-friendly (rate-limit detection).
-- The mobile client's non-2xx error path already fires for 429, which shows a
-  generic error message – acceptable UX for a quota scenario.
-- The response body still carries `{ error: "quota_exceeded" }` so the client
-  can detect the specific reason if it evolves to handle it explicitly.
-- Avoids the anti-pattern of sending error state in a 200 response.
+- The existing mobile client only maps quota-specific UI when the response is
+  HTTP 200 and body contains `error: quota_exceeded`.
+- Keeping this response shape avoids a client-side breaking behavior change
+  during infrastructure migration.
+- The service still uses HTTP 429 for internal microservice rate limiting
+  (`too_many_requests`), which is a separate concern.

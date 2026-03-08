@@ -58,7 +58,7 @@ export async function searchFoods(
         format: 'json',
       });
 
-      logger.info({ query, maxResults, attempt }, 'Calling FatSecret foods.search');
+      logger.info({ queryLength: query.length, maxResults, attempt }, 'Calling FatSecret foods.search');
 
       const response = await axios.get<unknown>(
         `${config.fatSecretApiUrl}?${params}`,

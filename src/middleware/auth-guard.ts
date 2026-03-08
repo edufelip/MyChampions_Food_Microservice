@@ -33,8 +33,8 @@ export async function authGuard(
     const decoded = await verifyIdToken(idToken);
     res.locals['uid'] = decoded.uid;
     next();
-  } catch (err) {
-    logger.warn({ err }, 'Firebase ID token verification failed');
+  } catch {
+    logger.warn({ reason: 'token_verification_failed' }, 'Firebase ID token verification failed');
     res.status(401).json({ error: 'unauthenticated', message: 'Invalid or expired token' });
   }
 }

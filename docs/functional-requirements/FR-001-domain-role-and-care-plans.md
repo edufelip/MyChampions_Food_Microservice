@@ -46,7 +46,7 @@ deployed on the VPS at `165.22.147.90`. The microservice:
 | Body | `{ query: string, maxResults: number }` |
 | Success | HTTP 200, `{ results: [...] }` |
 | Auth failure | HTTP 401 |
-| Quota | HTTP 429, `{ error: "quota_exceeded" }` |
+| Quota | HTTP 200, `{ error: "quota_exceeded" }` |
 | Other errors | HTTP 4xx/5xx |
 
 **Endpoint:** `POST /searchFoods`  

@@ -38,7 +38,7 @@
 ## TC-207.8 – FatSecret quota exceeded
 **Type:** Integration (mocked)  
 **Input:** FatSecret returns error code 22 (quota exceeded)  
-**Expected:** HTTP 429, `{ error: "quota_exceeded" }`
+**Expected:** HTTP 200, `{ error: "quota_exceeded" }`
 
 ## TC-207.9 – Upstream network failure
 **Type:** Integration (mocked)  
