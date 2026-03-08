@@ -81,7 +81,7 @@ export async function searchFoods(
         // Detect FatSecret quota exceeded
         if (status === 400 || status === 403) {
           const errorCode = (body?.['error'] as Record<string, unknown>)?.['code'];
-          if (errorCode === '22' || String(errorCode) === '22') {
+          if (String(errorCode) === '22') {
             throw new FatSecretError('quota_exceeded', status, 'quota_exceeded');
           }
           throw new FatSecretError(
