@@ -49,17 +49,12 @@ for i in {1..12}; do
   sleep 5
 done
 
-# 4. Install Nginx config (idempotent)
-if [[ ! -L "$NGINX_ENABLED" ]]; then
-  echo "--- Installing Nginx site config..."
-  sudo cp "$NGINX_CONF_SRC" "$NGINX_CONF_DST"
-  sudo ln -sf "$NGINX_CONF_DST" "$NGINX_ENABLED"
-  sudo nginx -t && sudo systemctl reload nginx
-  echo "--- Nginx config installed and reloaded."
-else
-  echo "--- Nginx config already installed – reloading..."
-  sudo nginx -t && sudo systemctl reload nginx
-fi
+# 4. Install/update Nginx config (idempotent)
+echo "--- Syncing Nginx site config..."
+sudo cp "$NGINX_CONF_SRC" "$NGINX_CONF_DST"
+sudo ln -sf "$NGINX_CONF_DST" "$NGINX_ENABLED"
+sudo nginx -t && sudo systemctl reload nginx
+echo "--- Nginx config synced and reloaded."
 
 echo ""
 echo "=== Deploy complete ==="

@@ -37,7 +37,7 @@ Food item search is powered by the FatSecret API, accessed through the
 | Success response | `{ results: FatSecretFoodItem[] }` |
 | Empty results | `{ results: [] }` – valid, show "No results found" |
 | Auth error | HTTP 401 – trigger re-auth flow |
-| Quota error | HTTP 429 – show "Too many requests, try again later" |
+| Quota error | HTTP 200 + `{ error: "quota_exceeded" }` |
 | Other errors | Non-2xx – show generic error toast |
 
 ### Deployment path
@@ -73,4 +73,4 @@ dynamic-IP blocking that affected the Firebase Cloud Function proxy.
 
 | Date | Change |
 |------|--------|
-| 2026-03 | Updated integration source from Firebase proxy to VPS microservice (DR-005). Quota error HTTP code changed from implied 200+error to 429. |
+| 2026-03 | Updated integration source from Firebase proxy to VPS microservice (DR-005). Quota behavior kept client-compatible as HTTP 200 + `{ error: "quota_exceeded" }`. |

@@ -141,6 +141,7 @@ docker compose down
 | `PORT` | No | `3000` | Internal HTTP port |
 | `NODE_ENV` | No | `production` | Node environment |
 | `LOG_LEVEL` | No | `info` | Pino log level |
+| `TRUST_PROXY_HOPS` | No | `1` | Reverse-proxy hops trusted for correct client IP rate-limiting |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | **Yes** | – | Firebase service account (base64 or raw JSON) |
 | `FATSECRET_CLIENT_ID` | **Yes** | – | FatSecret OAuth2 client ID |
 | `FATSECRET_CLIENT_SECRET` | **Yes** | – | FatSecret OAuth2 client secret |

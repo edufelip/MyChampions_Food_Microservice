@@ -14,6 +14,7 @@ import { searchFoodsController } from './controllers/search-foods.controller';
 
 export function createApp(): express.Application {
   const app = express();
+  app.set('trust proxy', config.trustProxyHops);
 
   // ─── Middleware ────────────────────────────────────────────────────────────
 
@@ -64,9 +65,8 @@ export function createApp(): express.Application {
 
   // ─── Global error handler ──────────────────────────────────────────────────
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    logger.error({ err }, 'Unhandled error');
+    logger.error({ errorName: err.name }, 'Unhandled error');
     res.status(500).json({ error: 'internal_error', message: 'An unexpected error occurred' });
   });
 

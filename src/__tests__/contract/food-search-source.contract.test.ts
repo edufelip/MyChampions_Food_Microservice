@@ -6,7 +6,7 @@
  *   - 401/403 → unauthenticated path (client discards token)
  *   - Non-2xx  → client throws "Proxy returned error status: <status>"
  *   - 200      → { results: [...] } (results may be empty)
- *   - 200      → { error: "quota_exceeded" } handled specially (client compat)
+ *   - 200      → { error: "quota_exceeded" } handled specially
  */
 import request from 'supertest';
 import { createApp } from '../../server';
@@ -92,7 +92,7 @@ describe('Contract: mobile client compatibility', () => {
 
   /**
    * CONTRACT: Non-2xx responses cause client to throw "Proxy returned error status: <status>".
-   * Verify 400, 429, 500 are all non-2xx and have JSON error bodies.
+   * Verify 400 and 500 remain non-2xx.
    */
   it('C4: 400 from validation is non-2xx with JSON error body', async () => {
     const res = await request(app)
@@ -104,7 +104,7 @@ describe('Contract: mobile client compatibility', () => {
     expect(res.body).toHaveProperty('error');
   });
 
-  it('C5: 429 quota_exceeded is non-2xx (client generic error path)', async () => {
+  it('C5: Quota response returns 200 + { error: quota_exceeded }', async () => {
     const { FatSecretError } = jest.requireMock('../../fatsecret/search-client') as {
       FatSecretError: new (msg: string, code?: number, fsCode?: string) => Error & { fatSecretCode?: string };
     };
@@ -115,8 +115,7 @@ describe('Contract: mobile client compatibility', () => {
       .set('Authorization', 'Bearer valid-token')
       .send({ query: 'chicken', maxResults: 10 });
 
-    expect(res.status).toBe(429);
-    // The response body carries `error: quota_exceeded` for forward compatibility
+    expect(res.status).toBe(200);
     expect(res.body.error).toBe('quota_exceeded');
   });
 

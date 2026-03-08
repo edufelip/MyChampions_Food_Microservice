@@ -23,7 +23,7 @@
 ## AC-207.5 – Quota exceeded
 **Given** the FatSecret API quota is exhausted  
 **When** the request reaches the Food Microservice  
-**Then** the response is HTTP 429 with `{ error: "quota_exceeded" }`
+**Then** the response is HTTP 200 with `{ error: "quota_exceeded" }`
 
 ## AC-207.6 – Internal error
 **Given** an unexpected upstream error occurs  

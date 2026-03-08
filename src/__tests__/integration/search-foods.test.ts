@@ -122,7 +122,7 @@ describe('POST /searchFoods', () => {
   });
 
   describe('Error mapping', () => {
-    it('returns 429 on quota exceeded', async () => {
+    it('returns 200 + quota_exceeded body on quota exceeded (client compatibility)', async () => {
       mockedSearchFoods.mockRejectedValue(
         new FatSecretError('quota_exceeded', 403, 'quota_exceeded'),
       );
@@ -132,8 +132,8 @@ describe('POST /searchFoods', () => {
         .set('Authorization', VALID_AUTH)
         .send(VALID_BODY);
 
-      expect(res.status).toBe(429);
-      expect(res.body.error).toBe('quota_exceeded');
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ error: 'quota_exceeded' });
     });
 
     it('returns 400 on FatSecret bad_request error', async () => {
