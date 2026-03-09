@@ -131,10 +131,27 @@ describe('Contract: mobile client compatibility', () => {
     expect(JSON.stringify(res.body)).not.toContain('secret DB password xyz');
   });
 
+  it('C7: upstream IP allowlist mismatch returns non-2xx (502)', async () => {
+    const { FatSecretError } = jest.requireMock('../../fatsecret/search-client') as {
+      FatSecretError: new (msg: string, code?: number, fsCode?: string) => Error & { fatSecretCode?: string };
+    };
+    mockedSearchFoods.mockRejectedValue(
+      new FatSecretError('upstream_ip_not_allowlisted', 502, 'upstream_ip_not_allowlisted'),
+    );
+
+    const res = await request(app)
+      .post('/searchFoods')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ query: 'rice', maxResults: 10 });
+
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe('upstream_ip_not_allowlisted');
+  });
+
   /**
    * CONTRACT: Content-Type must be application/json.
    */
-  it('C7: Content-Type application/json is required for POST', async () => {
+  it('C8: Content-Type application/json is required for POST', async () => {
     mockedSearchFoods.mockResolvedValue([]);
 
     const res = await request(app)

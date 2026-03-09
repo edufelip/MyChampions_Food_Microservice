@@ -149,6 +149,23 @@ describe('POST /searchFoods', () => {
       expect(res.status).toBe(400);
     });
 
+    it('returns 502 when FatSecret IP is not allowlisted', async () => {
+      mockedSearchFoods.mockRejectedValue(
+        new FatSecretError('upstream_ip_not_allowlisted', 502, 'upstream_ip_not_allowlisted'),
+      );
+
+      const res = await request(app)
+        .post('/searchFoods')
+        .set('Authorization', VALID_AUTH)
+        .send(VALID_BODY);
+
+      expect(res.status).toBe(502);
+      expect(res.body).toEqual({
+        error: 'upstream_ip_not_allowlisted',
+        message: 'Food provider IP allowlist mismatch',
+      });
+    });
+
     it('returns 500 on unexpected error', async () => {
       mockedSearchFoods.mockRejectedValue(new Error('Network failure'));
 

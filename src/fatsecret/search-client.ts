@@ -23,6 +23,18 @@ export class FatSecretError extends Error {
   }
 }
 
+function getFatSecretBodyError(data: unknown): { code?: string; message?: string } | null {
+  if (!data || typeof data !== 'object') return null;
+  const root = data as Record<string, unknown>;
+  const error = root['error'];
+  if (!error || typeof error !== 'object') return null;
+  const errObj = error as Record<string, unknown>;
+  return {
+    code: errObj['code'] !== undefined ? String(errObj['code']) : undefined,
+    message: errObj['message'] !== undefined ? String(errObj['message']) : undefined,
+  };
+}
+
 function isTransient(err: unknown): boolean {
   if (err instanceof AxiosError) {
     const status = err.response?.status;
@@ -67,6 +79,21 @@ export async function searchFoods(
           timeout: config.upstreamTimeoutMs,
         },
       );
+
+      const bodyError = getFatSecretBodyError(response.data);
+      if (bodyError?.code === '22') {
+        throw new FatSecretError('quota_exceeded', 403, 'quota_exceeded');
+      }
+      if (bodyError?.code === '21') {
+        throw new FatSecretError('upstream_ip_not_allowlisted', 502, 'upstream_ip_not_allowlisted');
+      }
+      if (bodyError?.code) {
+        throw new FatSecretError(
+          bodyError.message ?? 'FatSecret upstream error',
+          502,
+          'upstream_error',
+        );
+      }
 
       const results = mapFatSecretResponse(response.data);
       logger.info({ resultCount: results.length }, 'FatSecret search complete');

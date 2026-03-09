@@ -48,6 +48,24 @@ export async function searchFoodsController(
         return;
       }
 
+      if (err.fatSecretCode === 'upstream_ip_not_allowlisted') {
+        logger.error({ uid, error: serializeError(err) }, 'FatSecret IP allowlist mismatch');
+        res.status(502).json({
+          error: 'upstream_ip_not_allowlisted',
+          message: 'Food provider IP allowlist mismatch',
+        });
+        return;
+      }
+
+      if (err.fatSecretCode === 'upstream_error' || (err.statusCode !== undefined && err.statusCode >= 500)) {
+        logger.error({ uid, error: serializeError(err) }, 'FatSecret upstream unavailable');
+        res.status(502).json({
+          error: 'upstream_error',
+          message: 'Food provider unavailable',
+        });
+        return;
+      }
+
       logger.error({ uid, error: serializeError(err) }, 'FatSecret API error');
       res.status(400).json({ error: 'bad_request', message: 'Unable to process search request' });
       return;
