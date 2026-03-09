@@ -71,13 +71,15 @@ Required GitHub repository secrets:
 - `VPS_SSH_PRIVATE_KEY`
 - `VPS_KNOWN_HOSTS`
 - `FOODSERVICE_ENV_FILE` (full `.env` file text)
+- `GHCR_USERNAME` (GitHub user/org with package read access)
+- `GHCR_TOKEN` (token with `read:packages`)
 
 Pipeline flow:
-1. Checkout code.
+1. Build and push Docker image to GHCR (`ghcr.io/edufelip/mychampions_food_microservice:<sha>` + `:main`).
 2. Configure SSH key + known_hosts.
 3. `rsync` project to VPS (keeps `.env` out of git sync).
 4. Replace `/opt/food-microservice/.env` from `FOODSERVICE_ENV_FILE` (atomic rewrite + required-key validation).
-5. Run `infra/scripts/deploy-blue-green.sh` remotely.
+5. Authenticate VPS Docker to GHCR and run `infra/scripts/deploy-blue-green.sh` with `IMAGE_TAG=<sha>`.
 6. Verify `https://foodservice.eduwaldo.com/health`.
 
 Secret rotation:

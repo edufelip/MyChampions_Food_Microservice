@@ -10,6 +10,9 @@ NGINX_CONF_DST="/etc/nginx/sites-available/food-microservice"
 NGINX_ENABLED="/etc/nginx/sites-enabled/food-microservice"
 NGINX_UPSTREAM_SNIPPET="/etc/nginx/snippets/food-microservice-upstream.conf"
 PUBLIC_DOMAIN="${PUBLIC_DOMAIN:-foodservice.eduwaldo.com}"
+IMAGE_REPO="${IMAGE_REPO:-ghcr.io/edufelip/mychampions_food_microservice}"
+IMAGE_TAG="${IMAGE_TAG:-main}"
+DEPLOY_IMAGE="${IMAGE_REPO}:${IMAGE_TAG}"
 
 PROTECTED_CONTAINERS=("meer" "meer-dev")
 PROTECTED_PORTS=(8081 8080)
@@ -169,6 +172,7 @@ trap 'rollback_on_error $?' EXIT
 log "=== Safe Food Microservice Deploy (Blue/Green) ==="
 log "App dir: $APP_DIR"
 log "Domain:  $PUBLIC_DOMAIN"
+log "Image:   $DEPLOY_IMAGE"
 
 if command -v flock >/dev/null 2>&1; then
   exec 9>"$LOCK_FILE"
@@ -223,11 +227,14 @@ fi
 log "Current active slot: $CURRENT_SLOT"
 log "Target slot:         $TARGET_SLOT"
 
-log "Building target slot image..."
-"${COMPOSE_CMD[@]}" build "food-microservice-$TARGET_SLOT"
+export FOOD_IMAGE="$DEPLOY_IMAGE"
+log "Pulling deployment image..."
+docker pull "$DEPLOY_IMAGE"
+log "Pulling compose service image for target slot..."
+"${COMPOSE_CMD[@]}" pull "food-microservice-$TARGET_SLOT"
 
 log "Starting target slot container..."
-"${COMPOSE_CMD[@]}" up -d "food-microservice-$TARGET_SLOT"
+"${COMPOSE_CMD[@]}" up -d --no-build "food-microservice-$TARGET_SLOT"
 
 log "Waiting for local health on target slot..."
 if ! wait_local_health "$TARGET_SLOT"; then
