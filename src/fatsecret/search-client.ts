@@ -55,6 +55,8 @@ async function sleep(ms: number): Promise<void> {
 export async function searchFoods(
   query: string,
   maxResults: number,
+  region: string,
+  language: string,
 ): Promise<FatSecretFoodItem[]> {
   let lastError: unknown;
   const maxAttempts = config.upstreamRetries + 1;
@@ -67,10 +69,13 @@ export async function searchFoods(
         method: 'foods.search',
         search_expression: query,
         max_results: maxResults,
+        food_type: 'generic',
+        region,
+        language,
         format: 'json',
       });
 
-      logger.info({ queryLength: query.length, maxResults, attempt }, 'Calling FatSecret foods.search');
+      logger.info({ queryLength: query.length, maxResults, region, language, attempt }, 'Calling FatSecret foods.search');
 
       const response = await axios.get<unknown>(
         `${config.fatSecretApiUrl}?${params}`,

@@ -34,11 +34,11 @@ export async function searchFoodsController(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const { query, maxResults } = req.body as SearchFoodsBody;
+  const { query, maxResults, region, language } = req.body as SearchFoodsBody;
   const uid = res.locals['uid'] as string;
 
   try {
-    const results = await searchFoods(query, maxResults);
+    const results = await searchFoods(query, maxResults, region, language);
     res.status(200).json({ results });
   } catch (err) {
     if (err instanceof FatSecretError) {

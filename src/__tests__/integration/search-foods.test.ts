@@ -33,11 +33,11 @@ import { FatSecretError } from '../../fatsecret/search-client';
 const mockedSearchFoods = searchFoods as jest.MockedFunction<typeof searchFoods>;
 
 const VALID_AUTH = 'Bearer valid-firebase-token';
-const VALID_BODY = { query: 'chicken', maxResults: 10 };
+const VALID_BODY = { query: 'chicken', maxResults: 10, region: 'US', language: 'en' };
 
 const MOCK_FOOD_ITEMS = [
-  { food_id: '33891', food_name: 'Chicken Breast', food_type: 'Generic' },
-  { food_id: '33892', food_name: 'Grilled Chicken', food_type: 'Generic' },
+  { id: '33891', name: 'Chicken Breast', carbohydrate: 0, protein: 31, fat: 3.6, serving: 100 },
+  { id: '33892', name: 'Grilled Chicken', carbohydrate: 0, protein: 29, fat: 4.1, serving: 100 },
 ];
 
 describe('POST /searchFoods', () => {
@@ -59,7 +59,7 @@ describe('POST /searchFoods', () => {
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('results');
       expect(res.body.results).toHaveLength(2);
-      expect(res.body.results[0]).toMatchObject({ food_id: '33891' });
+      expect(res.body.results[0]).toMatchObject({ id: '33891' });
     });
 
     it('returns 200 with empty results when no foods found', async () => {
@@ -105,7 +105,7 @@ describe('POST /searchFoods', () => {
       const res = await request(app)
         .post('/searchFoods')
         .set('Authorization', VALID_AUTH)
-        .send({ maxResults: 10 });
+        .send({ maxResults: 10, region: 'US', language: 'en' });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toBe('bad_request');
@@ -115,7 +115,7 @@ describe('POST /searchFoods', () => {
       const res = await request(app)
         .post('/searchFoods')
         .set('Authorization', VALID_AUTH)
-        .send({ query: 'chicken', maxResults: -1 });
+        .send({ query: 'chicken', maxResults: -1, region: 'US', language: 'en' });
 
       expect(res.status).toBe(400);
     });

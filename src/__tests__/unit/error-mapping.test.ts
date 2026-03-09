@@ -18,62 +18,159 @@ describe('mapFatSecretResponse', () => {
     expect(mapFatSecretResponse({ other: 'data' })).toEqual([]);
   });
 
-  it('returns empty array when legacy food property is missing', () => {
-    expect(mapFatSecretResponse({ foods_search: { results: {} } })).toEqual([]);
-  });
-
-  it('maps array of food items from legacy foods_search shape', () => {
-    const input = {
-      foods_search: {
-        results: {
-          food: [
-            { food_id: '1', food_name: 'Chicken Breast' },
-            { food_id: '2', food_name: 'Salmon' },
-          ],
-        },
-      },
-    };
-    const result = mapFatSecretResponse(input);
-    expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({ food_id: '1', food_name: 'Chicken Breast' });
-  });
-
-  it('maps array of food items from foods shape', () => {
+  it('maps and normalizes macros to 100g from foods array', () => {
     const input = {
       foods: {
         food: [
-          { food_id: '1', food_name: 'Chicken Breast' },
-          { food_id: '2', food_name: 'Salmon' },
+          {
+            food_id: '1',
+            food_name: 'Chicken Breast',
+            servings: {
+              serving: {
+                metric_serving_amount: '140',
+                metric_serving_unit: 'g',
+                carbohydrate: '0',
+                protein: '43.4',
+                fat: '5.04',
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    const result = mapFatSecretResponse(input);
+    expect(result).toEqual([
+      {
+        id: '1',
+        name: 'Chicken Breast',
+        carbohydrate: 0,
+        protein: 31,
+        fat: 3.6,
+        serving: 100,
+      },
+    ]);
+  });
+
+  it('uses first valid gram-based serving when multiple servings are present', () => {
+    const input = {
+      foods: {
+        food: [
+          {
+            food_id: '2',
+            food_name: 'Rice',
+            servings: {
+              serving: [
+                {
+                  metric_serving_amount: '1',
+                  metric_serving_unit: 'cup',
+                  carbohydrate: '44.5',
+                  protein: '4.24',
+                  fat: '0.45',
+                },
+                {
+                  metric_serving_amount: '160',
+                  metric_serving_unit: 'g',
+                  carbohydrate: '44.5',
+                  protein: '4.24',
+                  fat: '0.45',
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    const result = mapFatSecretResponse(input);
+    expect(result).toEqual([
+      {
+        id: '2',
+        name: 'Rice',
+        carbohydrate: 27.81,
+        protein: 2.65,
+        fat: 0.28,
+        serving: 100,
+      },
+    ]);
+  });
+
+  it('skips foods without valid gram-based servings', () => {
+    const input = {
+      foods: {
+        food: [
+          {
+            food_id: '3',
+            food_name: 'No Grams',
+            servings: {
+              serving: {
+                metric_serving_amount: '1',
+                metric_serving_unit: 'oz',
+                carbohydrate: '1',
+                protein: '2',
+                fat: '3',
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    const result = mapFatSecretResponse(input);
+    expect(result).toEqual([]);
+  });
+
+  it('skips foods when serving amount is invalid', () => {
+    const input = {
+      foods: {
+        food: [
+          {
+            food_id: '4',
+            food_name: 'Invalid Amount',
+            servings: {
+              serving: {
+                metric_serving_amount: '0',
+                metric_serving_unit: 'g',
+                carbohydrate: '10',
+                protein: '10',
+                fat: '10',
+              },
+            },
+          },
         ],
       },
     };
     const result = mapFatSecretResponse(input);
-    expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({ food_id: '1', food_name: 'Chicken Breast' });
+    expect(result).toEqual([]);
   });
 
-  it('wraps single object result in array for legacy foods_search shape', () => {
+  it('rounds values to 2 decimals', () => {
     const input = {
-      foods_search: {
-        results: {
-          food: { food_id: '1', food_name: 'Chicken Breast' },
+      foods: {
+        food: {
+          food_id: '5',
+          food_name: 'Rounded',
+          servings: {
+            serving: {
+              metric_serving_amount: '37',
+              metric_serving_unit: 'g',
+              carbohydrate: '4.321',
+              protein: '1.678',
+              fat: '0.789',
+            },
+          },
         },
       },
     };
     const result = mapFatSecretResponse(input);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ food_id: '1', food_name: 'Chicken Breast' });
-  });
-
-  it('wraps single object result in array for foods shape', () => {
-    const input = {
-      foods: {
-        food: { food_id: '3', food_name: 'Egg' },
-      },
-    };
-    const result = mapFatSecretResponse(input);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ food_id: '3', food_name: 'Egg' });
+    expect(result[0]).toEqual({
+      id: '5',
+      name: 'Rounded',
+      carbohydrate: 11.68,
+      protein: 4.54,
+      fat: 2.13,
+      serving: 100,
+    });
   });
 });
 

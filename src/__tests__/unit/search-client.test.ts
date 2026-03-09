@@ -19,7 +19,7 @@ describe('searchFoods', () => {
       data: { error: { code: 21, message: 'Invalid IP address' } },
     } as never);
 
-    await expect(searchFoods('Rice', 10)).rejects.toMatchObject<Partial<FatSecretError>>({
+    await expect(searchFoods('Rice', 10, 'US', 'en')).rejects.toMatchObject<Partial<FatSecretError>>({
       name: 'FatSecretError',
       fatSecretCode: 'upstream_ip_not_allowlisted',
       statusCode: 502,
@@ -31,25 +31,30 @@ describe('searchFoods', () => {
       data: { error: { code: 22, message: 'Quota exceeded' } },
     } as never);
 
-    await expect(searchFoods('Rice', 10)).rejects.toMatchObject<Partial<FatSecretError>>({
+    await expect(searchFoods('Rice', 10, 'US', 'en')).rejects.toMatchObject<Partial<FatSecretError>>({
       name: 'FatSecretError',
       fatSecretCode: 'quota_exceeded',
     });
   });
 
-  it('returns mapped results when FatSecret payload has foods', async () => {
+  it('calls v5 foods.search with generic food_type, region, and language', async () => {
     mockedAxios.get = jest.fn().mockResolvedValue({
       data: {
         foods: {
-          food: [
-            { food_id: '1', food_name: 'Rice' },
-          ],
+          food: [],
         },
       },
     } as never);
 
-    const results = await searchFoods('Rice', 10);
-    expect(results).toHaveLength(1);
-    expect(results[0]).toMatchObject({ food_id: '1', food_name: 'Rice' });
+    await searchFoods('Rice', 10, 'US', 'en');
+
+    expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+    const [url] = mockedAxios.get.mock.calls[0] as [string];
+    expect(url).toContain('method=foods.search');
+    expect(url).toContain('search_expression=Rice');
+    expect(url).toContain('max_results=10');
+    expect(url).toContain('food_type=generic');
+    expect(url).toContain('region=US');
+    expect(url).toContain('language=en');
   });
 });

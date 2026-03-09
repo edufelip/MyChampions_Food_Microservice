@@ -23,7 +23,7 @@ describe('validateSearchFoodsBody middleware', () => {
   });
 
   it('returns 400 when query is missing', () => {
-    const req = mockReq({ maxResults: 10 });
+    const req = mockReq({ maxResults: 10, region: 'US', language: 'en' });
     const { res, statusFn } = mockRes();
 
     validateSearchFoodsBody(req as Request, res as Response, next);
@@ -33,7 +33,7 @@ describe('validateSearchFoodsBody middleware', () => {
   });
 
   it('returns 400 when query is empty string', () => {
-    const req = mockReq({ query: '   ', maxResults: 10 });
+    const req = mockReq({ query: '   ', maxResults: 10, region: 'US', language: 'en' });
     const { res, statusFn } = mockRes();
 
     validateSearchFoodsBody(req as Request, res as Response, next);
@@ -43,7 +43,7 @@ describe('validateSearchFoodsBody middleware', () => {
   });
 
   it('returns 400 when maxResults is missing', () => {
-    const req = mockReq({ query: 'chicken' });
+    const req = mockReq({ query: 'chicken', region: 'US', language: 'en' });
     const { res, statusFn } = mockRes();
 
     validateSearchFoodsBody(req as Request, res as Response, next);
@@ -53,7 +53,7 @@ describe('validateSearchFoodsBody middleware', () => {
   });
 
   it('returns 400 when maxResults is 0', () => {
-    const req = mockReq({ query: 'chicken', maxResults: 0 });
+    const req = mockReq({ query: 'chicken', maxResults: 0, region: 'US', language: 'en' });
     const { res, statusFn } = mockRes();
 
     validateSearchFoodsBody(req as Request, res as Response, next);
@@ -63,7 +63,7 @@ describe('validateSearchFoodsBody middleware', () => {
   });
 
   it('returns 400 when maxResults is a float', () => {
-    const req = mockReq({ query: 'chicken', maxResults: 1.5 });
+    const req = mockReq({ query: 'chicken', maxResults: 1.5, region: 'US', language: 'en' });
     const { res, statusFn } = mockRes();
 
     validateSearchFoodsBody(req as Request, res as Response, next);
@@ -72,18 +72,43 @@ describe('validateSearchFoodsBody middleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('calls next with valid body and trims query', () => {
-    const req = mockReq({ query: '  chicken  ', maxResults: 10 });
+  it('returns 400 when region is missing', () => {
+    const req = mockReq({ query: 'chicken', maxResults: 10, language: 'en' });
+    const { res, statusFn } = mockRes();
+
+    validateSearchFoodsBody(req as Request, res as Response, next);
+
+    expect(statusFn).toHaveBeenCalledWith(400);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when language is missing', () => {
+    const req = mockReq({ query: 'chicken', maxResults: 10, region: 'US' });
+    const { res, statusFn } = mockRes();
+
+    validateSearchFoodsBody(req as Request, res as Response, next);
+
+    expect(statusFn).toHaveBeenCalledWith(400);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('calls next with valid body and trims query/region/language', () => {
+    const req = mockReq({ query: '  chicken  ', maxResults: 10, region: '  US ', language: ' en  ' });
     const { res } = mockRes();
 
     validateSearchFoodsBody(req as Request, res as Response, next);
 
     expect(next).toHaveBeenCalled();
-    expect((req as Request).body).toEqual({ query: 'chicken', maxResults: 10 });
+    expect((req as Request).body).toEqual({
+      query: 'chicken',
+      maxResults: 10,
+      region: 'US',
+      language: 'en',
+    });
   });
 
   it('caps maxResults to configured limit (50)', () => {
-    const req = mockReq({ query: 'chicken', maxResults: 999 });
+    const req = mockReq({ query: 'chicken', maxResults: 999, region: 'US', language: 'en' });
     const { res } = mockRes();
 
     validateSearchFoodsBody(req as Request, res as Response, next);

@@ -2,7 +2,7 @@
  * Contract tests – verifies compatibility with mobile client expectations.
  *
  * Models the behaviour defined in features/nutrition/food-search-source.ts:
- *   - POST with Authorization: Bearer <token> and { query, maxResults }
+ *   - POST with Authorization: Bearer <token> and { query, maxResults, region, language }
  *   - 401/403 → unauthenticated path (client discards token)
  *   - Non-2xx  → client throws "Proxy returned error status: <status>"
  *   - 200      → { results: [...] } (results may be empty)
@@ -48,7 +48,7 @@ describe('Contract: mobile client compatibility', () => {
    */
   it('C1: 200 response has { results: [...] } shape', async () => {
     const mockFoods = [
-      { food_id: '1', food_name: 'Banana', food_url: 'https://fatsecret.com/calories-nutrition/generic/banana' },
+      { id: '1', name: 'Banana', carbohydrate: 22.84, protein: 1.09, fat: 0.33, serving: 100 },
     ];
     mockedSearchFoods.mockResolvedValue(mockFoods);
 
@@ -56,12 +56,12 @@ describe('Contract: mobile client compatibility', () => {
       .post('/searchFoods')
       .set('Content-Type', 'application/json')
       .set('Authorization', 'Bearer valid-token')
-      .send({ query: 'banana', maxResults: 5 });
+      .send({ query: 'banana', maxResults: 5, region: 'US', language: 'en' });
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('results');
     expect(Array.isArray(res.body.results)).toBe(true);
-    expect(res.body.results[0]).toHaveProperty('food_id');
+    expect(res.body.results[0]).toHaveProperty('id');
   });
 
   /**
@@ -73,7 +73,7 @@ describe('Contract: mobile client compatibility', () => {
     const res = await request(app)
       .post('/searchFoods')
       .set('Authorization', 'Bearer valid-token')
-      .send({ query: 'xyzzy-nonexistent', maxResults: 10 });
+      .send({ query: 'xyzzy-nonexistent', maxResults: 10, region: 'US', language: 'en' });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ results: [] });
@@ -98,7 +98,7 @@ describe('Contract: mobile client compatibility', () => {
     const res = await request(app)
       .post('/searchFoods')
       .set('Authorization', 'Bearer valid-token')
-      .send({ query: '', maxResults: 10 });
+      .send({ query: '', maxResults: 10, region: 'US', language: 'en' });
 
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(res.body).toHaveProperty('error');
@@ -113,7 +113,7 @@ describe('Contract: mobile client compatibility', () => {
     const res = await request(app)
       .post('/searchFoods')
       .set('Authorization', 'Bearer valid-token')
-      .send({ query: 'chicken', maxResults: 10 });
+      .send({ query: 'chicken', maxResults: 10, region: 'US', language: 'en' });
 
     expect(res.status).toBe(200);
     expect(res.body.error).toBe('quota_exceeded');
@@ -125,7 +125,7 @@ describe('Contract: mobile client compatibility', () => {
     const res = await request(app)
       .post('/searchFoods')
       .set('Authorization', 'Bearer valid-token')
-      .send({ query: 'chicken', maxResults: 10 });
+      .send({ query: 'chicken', maxResults: 10, region: 'US', language: 'en' });
 
     expect(res.status).toBe(500);
     expect(JSON.stringify(res.body)).not.toContain('secret DB password xyz');
@@ -142,7 +142,7 @@ describe('Contract: mobile client compatibility', () => {
     const res = await request(app)
       .post('/searchFoods')
       .set('Authorization', 'Bearer valid-token')
-      .send({ query: 'rice', maxResults: 10 });
+      .send({ query: 'rice', maxResults: 10, region: 'US', language: 'en' });
 
     expect(res.status).toBe(502);
     expect(res.body.error).toBe('upstream_ip_not_allowlisted');
@@ -158,7 +158,7 @@ describe('Contract: mobile client compatibility', () => {
       .post('/searchFoods')
       .set('Authorization', 'Bearer valid-token')
       .set('Content-Type', 'application/json')
-      .send(JSON.stringify({ query: 'chicken', maxResults: 5 }));
+      .send(JSON.stringify({ query: 'chicken', maxResults: 5, region: 'US', language: 'en' }));
 
     expect(res.status).toBe(200);
   });

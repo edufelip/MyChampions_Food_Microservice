@@ -48,7 +48,7 @@ export function createApp(): express.Application {
    * POST /searchFoods
    * Compatible with the current mobile client contract:
    *   Authorization: Bearer <Firebase ID token>
-   *   { query: string, maxResults: number }
+   *   { query: string, maxResults: number, region: string, language: string }
    */
   app.post(
     '/searchFoods',
