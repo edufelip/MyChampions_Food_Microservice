@@ -43,11 +43,11 @@ Food item search is powered by the FatSecret API, accessed through the
 ### Deployment path
 
 ```
-Mobile App → HTTPS → food.mychampions.app (Nginx on VPS)
+Mobile App → HTTPS → foodservice.eduwaldo.com (Nginx on VPS)
                           → Docker container → FatSecret API
 ```
 
-The VPS fixed IP (`165.22.147.90`) is allowlisted in FatSecret to resolve the
+The VPS fixed IP (`<VPS_STATIC_IP>`) is allowlisted in FatSecret to resolve the
 dynamic-IP blocking that affected the Firebase Cloud Function proxy.
 
 ---

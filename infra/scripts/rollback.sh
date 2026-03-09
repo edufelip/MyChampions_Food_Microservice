@@ -1,52 +1,63 @@
 #!/usr/bin/env bash
-# rollback.sh – Roll back the Food Microservice to the previous Docker image,
-#               or switch the mobile app back to the Firebase endpoint.
-#
-# Usage (from local machine):
-#   ssh digiocean "cd /opt/food-microservice && bash infra/scripts/rollback.sh"
+# rollback.sh – Food microservice rollback helper (blue/green aware)
 set -euo pipefail
 
-APP_DIR="/opt/food-microservice"
-SERVICE_NAME="food-microservice"
+APP_DIR="${APP_DIR:-/opt/food-microservice}"
+ACTIVE_SLOT_FILE="$APP_DIR/.active_slot"
+NGINX_UPSTREAM_SNIPPET="/etc/nginx/snippets/food-microservice-upstream.conf"
+declare -a COMPOSE_CMD=()
 
-echo "=== MyChampions Food Microservice – Rollback ==="
+if docker compose version >/dev/null 2>&1; then
+  COMPOSE_CMD=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+  COMPOSE_CMD=(docker-compose)
+else
+  echo "ERROR: neither 'docker compose' nor 'docker-compose' is available"
+  exit 1
+fi
 
 cd "$APP_DIR"
 
-# ─── Option A: Roll back Docker image tag ─────────────────────────────────────
-# If you tagged the previous image before deploying, you can restore it:
-#
-#   PREV_IMAGE="mychampions-food-microservice:prev"
-#   docker compose down
-#   docker tag "$PREV_IMAGE" mychampions-food-microservice:latest
-#   docker compose up -d
-#
-# Uncomment and adjust if image tagging is in place.
-# ─────────────────────────────────────────────────────────────────────────────
+current_slot="blue"
+if [[ -f "$ACTIVE_SLOT_FILE" ]]; then
+  slot="$(tr -d '[:space:]' < "$ACTIVE_SLOT_FILE")"
+  if [[ "$slot" == "blue" || "$slot" == "green" ]]; then
+    current_slot="$slot"
+  fi
+fi
 
-# ─── Option B: Stop the container (re-enables Firebase path if Nginx is updated) ─
-echo "--- Stopping and removing container..."
-docker compose down
+if [[ "$current_slot" == "blue" ]]; then
+  target_slot="green"
+  target_port="3202"
+else
+  target_slot="blue"
+  target_port="3201"
+fi
 
-# ─── Option C: Redirect Nginx to Firebase Cloud Function URL ──────────────────
-# If you need to fully revert to Firebase, update the mobile app's
-# EXPO_PUBLIC_FOOD_SEARCH_FUNCTION_URL to the original Firebase URL and
-# rebuild/redeploy the app. No server-side change is needed for the Firebase
-# endpoint itself since it is publicly accessible.
-#
-# To quickly disable the VPS Nginx site without removing it:
-#   sudo rm -f /etc/nginx/sites-enabled/food-microservice
-#   sudo systemctl reload nginx
+echo "=== Food microservice rollback ==="
+echo "Current slot: $current_slot"
+echo "Rollback slot: $target_slot"
 
-echo ""
-echo "=== Rollback complete ==="
-echo "The Docker container has been stopped."
-echo ""
-echo "NEXT STEPS to restore Firebase endpoint:"
-echo "  1. In the mobile app, set EXPO_PUBLIC_FOOD_SEARCH_FUNCTION_URL back to"
-echo "     the original Firebase Cloud Function URL."
-echo "  2. Rebuild and redeploy the mobile app (Expo EAS build)."
-echo "  OR"
-echo "  1. sudo rm -f /etc/nginx/sites-enabled/food-microservice"
-echo "  2. sudo systemctl reload nginx"
-echo "  3. Update DNS/mobile app URL back to Firebase."
+"${COMPOSE_CMD[@]}" up -d "food-microservice-$target_slot"
+
+for i in {1..15}; do
+  if curl -fsS --max-time 3 "http://127.0.0.1:${target_port}/health" >/dev/null; then
+    break
+  fi
+  if [[ $i -eq 15 ]]; then
+    echo "ERROR: rollback target slot failed health check"
+    exit 1
+  fi
+  sleep 2
+done
+
+sudo mkdir -p /etc/nginx/snippets
+printf 'set $food_upstream http://127.0.0.1:%s;\n' "$target_port" | sudo tee "$NGINX_UPSTREAM_SNIPPET" >/dev/null
+sudo nginx -t
+sudo systemctl reload nginx
+
+printf '%s\n' "$target_slot" > "$ACTIVE_SLOT_FILE"
+"${COMPOSE_CMD[@]}" stop "food-microservice-$current_slot" >/dev/null 2>&1 || true
+"${COMPOSE_CMD[@]}" rm -f "food-microservice-$current_slot" >/dev/null 2>&1 || true
+
+echo "Rollback complete. Active slot: $target_slot"

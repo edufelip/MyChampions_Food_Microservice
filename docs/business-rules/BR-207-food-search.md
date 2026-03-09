@@ -28,6 +28,6 @@ service retries up to 2 times with exponential back-off (200 ms, 400 ms).
 Non-transient errors (4xx) are not retried.
 
 ## BR-207.7 – VPS IP must be allowlisted
-The VPS IP `165.22.147.90` must be allowlisted in the FatSecret developer
+The VPS IP `<VPS_STATIC_IP>` must be allowlisted in the FatSecret developer
 portal for the OAuth2 credentials in use. Without this, all FatSecret calls
 will fail with a 403/401 error.

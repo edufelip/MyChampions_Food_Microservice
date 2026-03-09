@@ -65,7 +65,7 @@
 ## Manual Verification Commands
 
 ```bash
-BASE_URL="https://food.mychampions.app"  # Replace with actual VPS URL
+BASE_URL="https://foodservice.eduwaldo.com"  # Replace with actual VPS URL
 TOKEN="<Firebase-ID-token>"              # Replace with valid token
 
 # TC-207.1 – Happy path

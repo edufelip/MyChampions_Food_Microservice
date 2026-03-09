@@ -2,176 +2,134 @@
 
 ## Overview
 
-This document describes how to deploy the Food Microservice to the VPS at
-`165.22.147.90` (`ssh digiocean`).
+This service is deployed on VPS (`ssh digiocean`) in **blue/green mode** and
+exposed at `https://foodservice.eduwaldo.com`.
 
-The service runs in Docker behind Nginx and validates Firebase ID tokens
-before proxying food search requests to the FatSecret API.
+Safety requirement: services `meer` and `meer-dev` are protected and must not
+be touched during food-service deployments.
 
 ---
 
 ## Prerequisites
 
-1. **VPS access:** `ssh digiocean` (IP: `165.22.147.90`)
-2. **Docker installed** on the VPS (already verified)
-3. **Nginx installed** on the VPS (already verified)
-4. **FatSecret IP allowlist:** Add `165.22.147.90` in the FatSecret developer
-   portal under your application's IP restrictions.
-5. **Domain / DNS:** Point your chosen domain (e.g. `food.mychampions.app`) to
-   `165.22.147.90`. (Or use the IP directly for testing.)
-6. **Firebase service account:** Download a service account JSON key from the
-   Firebase console (Project settings → Service accounts → Generate new key).
+1. VPS access: `ssh digiocean`
+2. Docker + Docker Compose available on VPS
+3. Nginx available on VPS
+4. FatSecret allowlist includes `<VPS_STATIC_IP>`
+5. DNS `foodservice.eduwaldo.com` points to `<VPS_STATIC_IP>`
+6. GitHub secret `FOODSERVICE_ENV_FILE` populated with full `.env` content, including:
+   - `FIREBASE_SERVICE_ACCOUNT_JSON`
+   - `FATSECRET_CLIENT_ID`
+   - `FATSECRET_CLIENT_SECRET`
 
 ---
 
-## Step-by-Step Deployment
+## Manual Deploy (Safe Blue/Green)
 
-### 1. Copy repository to VPS
+### 1. Sync code
 
 ```bash
-# From local machine
 rsync -avz --exclude='.git' --exclude='node_modules' --exclude='dist' \
   . digiocean:/opt/food-microservice/
 ```
 
-### 2. Create .env on VPS
+### 2. Run deploy script
 
 ```bash
-ssh digiocean
-cd /opt/food-microservice
-cp .env.example .env
-nano .env   # Fill in FIREBASE_SERVICE_ACCOUNT_JSON, FATSECRET_CLIENT_ID, FATSECRET_CLIENT_SECRET
+ssh digiocean "cd /opt/food-microservice && PUBLIC_DOMAIN=foodservice.eduwaldo.com bash infra/scripts/deploy-blue-green.sh"
 ```
 
-`FIREBASE_SERVICE_ACCOUNT_JSON` can be:
-- **Base64-encoded** (recommended): `base64 -i serviceAccountKey.json | tr -d '\n'`
-- Or the raw JSON on a single line (escape double quotes)
+What it does:
+- Verifies protected containers `meer` and `meer-dev` are running and unchanged.
+- Builds and starts the inactive food slot (`blue` on `3201` or `green` on `3202`).
+- Waits for local health on the target slot.
+- Switches Nginx upstream only after health passes.
+- Verifies public `https://foodservice.eduwaldo.com/health`.
+- Stops old food slot only after successful cutover.
 
-### 3. Run deploy script
+---
+
+## TLS (first setup)
 
 ```bash
-ssh digiocean "cd /opt/food-microservice && bash infra/scripts/deploy.sh"
-```
-
-### 4. Issue TLS certificate (first time only)
-
-```bash
-ssh digiocean
-sudo certbot --nginx -d food.mychampions.app
-```
-
-### 5. Update mobile app
-
-In your Expo project's `.env` / EAS secrets:
-
-```
-EXPO_PUBLIC_FOOD_SEARCH_FUNCTION_URL=https://food.mychampions.app/searchFoods
-```
-
-Then rebuild:
-
-```bash
-eas build --platform all
+ssh digiocean "sudo certbot --nginx -d foodservice.eduwaldo.com"
 ```
 
 ---
 
-## Verification
+## GitHub Actions Auto Deploy
+
+Workflow: `.github/workflows/deploy-food-prod.yml`
+
+Trigger:
+- `push` to `main`
+- optional `workflow_dispatch`
+
+Required GitHub repository secrets:
+- `VPS_HOST`
+- `VPS_USER`
+- `VPS_SSH_PRIVATE_KEY`
+- `VPS_KNOWN_HOSTS`
+- `FOODSERVICE_ENV_FILE` (full `.env` file text)
+
+Pipeline flow:
+1. Checkout code.
+2. Configure SSH key + known_hosts.
+3. `rsync` project to VPS (keeps `.env` out of git sync).
+4. Replace `/opt/food-microservice/.env` from `FOODSERVICE_ENV_FILE` (atomic rewrite + required-key validation).
+5. Run `infra/scripts/deploy-blue-green.sh` remotely.
+6. Verify `https://foodservice.eduwaldo.com/health`.
+
+Secret rotation:
+1. Update `FOODSERVICE_ENV_FILE` in GitHub Secrets.
+2. Push to `main` (or run `workflow_dispatch`).
+3. Confirm health endpoint after deployment.
+
+---
+
+## Verification Commands
 
 ```bash
-BASE_URL="https://food.mychampions.app"
-TOKEN="<valid-Firebase-ID-token>"
+# Public
+curl -s https://foodservice.eduwaldo.com/health | jq .
 
-# Health check (no auth)
-curl -s "$BASE_URL/health" | jq .
-# Expected: { "status": "ok", "service": "food-microservice", ... }
+# VPS local
+ssh digiocean "curl -s http://127.0.0.1:3201/health || true"
+ssh digiocean "curl -s http://127.0.0.1:3202/health || true"
 
-# Food search (happy path)
-curl -s -X POST "$BASE_URL/searchFoods" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"query":"chicken breast","maxResults":5}' | jq .
-# Expected: { "results": [...] }
-
-# Unauthenticated (no token)
-curl -s -X POST "$BASE_URL/searchFoods" \
-  -H "Content-Type: application/json" \
-  -d '{"query":"chicken","maxResults":5}' | jq .
-# Expected: 401, { "error": "unauthenticated" }
-
-# Bad input
-curl -s -X POST "$BASE_URL/searchFoods" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"maxResults":5}' | jq .
-# Expected: 400, { "error": "bad_request" }
+# Containers
+ssh digiocean "docker ps --format '{{.Names}}\t{{.Status}}' | rg 'food-microservice|meer|meer-dev'"
 ```
 
 ---
 
 ## Rollback
 
-To quickly revert to the Firebase Cloud Function endpoint:
-
-### Option A – Update the app URL only (zero VPS changes)
-
-1. Change `EXPO_PUBLIC_FOOD_SEARCH_FUNCTION_URL` back to the Firebase URL.
-2. Rebuild and redeploy the mobile app.
-
-### Option B – Stop the VPS service
-
 ```bash
 ssh digiocean "cd /opt/food-microservice && bash infra/scripts/rollback.sh"
 ```
 
-Or manually:
-
-```bash
-ssh digiocean
-cd /opt/food-microservice
-docker compose down
-```
+Rollback starts the opposite food slot, validates health, switches Nginx back,
+and then stops the currently active slot.
 
 ---
 
-## Environment Variables Reference
+## Environment Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `PORT` | No | `3000` | Internal HTTP port |
 | `NODE_ENV` | No | `production` | Node environment |
 | `LOG_LEVEL` | No | `info` | Pino log level |
-| `TRUST_PROXY_HOPS` | No | `1` | Reverse-proxy hops trusted for correct client IP rate-limiting |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | **Yes** | – | Firebase service account (base64 or raw JSON) |
+| `TRUST_PROXY_HOPS` | No | `1` | Trusted proxy hops |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | **Yes** | – | Firebase service account |
 | `FATSECRET_CLIENT_ID` | **Yes** | – | FatSecret OAuth2 client ID |
 | `FATSECRET_CLIENT_SECRET` | **Yes** | – | FatSecret OAuth2 client secret |
-| `FATSECRET_API_URL` | No | FatSecret default | Override FatSecret API endpoint |
-| `FATSECRET_TOKEN_URL` | No | FatSecret default | Override FatSecret token endpoint |
-| `TOKEN_EXPIRY_MARGIN_SECONDS` | No | `60` | Seconds before expiry to refresh token |
-| `UPSTREAM_TIMEOUT_MS` | No | `10000` | FatSecret call timeout (ms) |
-| `UPSTREAM_RETRIES` | No | `2` | Transient error retry count |
-| `RATE_LIMIT_WINDOW_MS` | No | `60000` | Rate limit window (ms) |
-| `RATE_LIMIT_MAX` | No | `60` | Max requests per IP per window |
-| `MAX_RESULTS_LIMIT` | No | `50` | Server-side cap on maxResults |
-
----
-
-## Monitoring
-
-Check container logs:
-
-```bash
-ssh digiocean "docker logs food-microservice --tail=100 -f"
-```
-
-Container status:
-
-```bash
-ssh digiocean "docker ps | grep food-microservice"
-```
-
-Health check:
-
-```bash
-curl -s https://food.mychampions.app/health | jq .
-```
+| `FATSECRET_API_URL` | No | FatSecret default | API endpoint override |
+| `FATSECRET_TOKEN_URL` | No | FatSecret default | OAuth token endpoint override |
+| `TOKEN_EXPIRY_MARGIN_SECONDS` | No | `60` | Proactive token refresh margin |
+| `UPSTREAM_TIMEOUT_MS` | No | `10000` | Upstream timeout |
+| `UPSTREAM_RETRIES` | No | `2` | Retry count |
+| `RATE_LIMIT_WINDOW_MS` | No | `60000` | Rate limit window |
+| `RATE_LIMIT_MAX` | No | `60` | Max requests per window |
+| `MAX_RESULTS_LIMIT` | No | `50` | Max `maxResults` cap |

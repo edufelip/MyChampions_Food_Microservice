@@ -2,6 +2,7 @@
  * Application entry point.
  * Creates the Express app and starts the HTTP server.
  */
+import 'dotenv/config';
 import { createApp } from './server';
 import { config } from './config';
 import { logger } from './logger';

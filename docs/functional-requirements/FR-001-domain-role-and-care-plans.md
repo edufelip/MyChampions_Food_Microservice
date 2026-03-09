@@ -30,7 +30,7 @@ items sourced from the FatSecret database via the Food Microservice
 > **Replaces:** Firebase Cloud Function proxy (deprecated due to IP restriction)
 
 The FatSecret food search is performed by a dedicated Node.js microservice
-deployed on the VPS at `165.22.147.90`. The microservice:
+deployed on the VPS at `<VPS_STATIC_IP>`. The microservice:
 
 1. Validates Firebase ID tokens issued by the app's Firebase project.
 2. Calls the FatSecret `foods.search` API using OAuth2 client credentials.

@@ -1,0 +1,89 @@
+name: Deploy Food Service (Production)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: foodservice-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Setup known hosts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Sync project to VPS
+        shell: bash
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            --exclude='.env' \
+            --exclude='.active_slot' \
+            ./ "$VPS_USER@$VPS_HOST:/opt/food-microservice/"
+
+      - name: Replace VPS .env from GitHub Secret
+        shell: bash
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          FOODSERVICE_ENV_FILE: ${{ secrets.FOODSERVICE_ENV_FILE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${FOODSERVICE_ENV_FILE:-}" ]]; then
+            echo "ERROR: FOODSERVICE_ENV_FILE secret is empty"
+            exit 1
+          fi
+          printf '%s' "$FOODSERVICE_ENV_FILE" | ssh "$VPS_USER@$VPS_HOST" '
+            set -euo pipefail
+            cd /opt/food-microservice
+            umask 077
+            cat > .env.new
+            for k in FIREBASE_SERVICE_ACCOUNT_JSON FATSECRET_CLIENT_ID FATSECRET_CLIENT_SECRET; do
+              grep -Eq "^${k}=.+" .env.new || { echo "ERROR: missing or empty ${k} in FOODSERVICE_ENV_FILE"; rm -f .env.new; exit 1; }
+            done
+            mv .env.new .env
+          '
+
+      - name: Run safe blue/green deploy on VPS
+        shell: bash
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          ssh "$VPS_USER@$VPS_HOST" "cd '/opt/food-microservice' && PUBLIC_DOMAIN=foodservice.eduwaldo.com bash infra/scripts/deploy-blue-green.sh"
+
+      - name: Verify public health
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 5 --retry-delay 2 https://foodservice.eduwaldo.com/health

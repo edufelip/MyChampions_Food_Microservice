@@ -54,7 +54,7 @@ allowlisted, causing HTTP 500 errors in production.
 **Status:** Active  
 **Decision:** Replace the Firebase Cloud Function FatSecret proxy with a
 production-grade Node.js + TypeScript microservice deployed on the VPS at
-fixed IP `165.22.147.90` (`ssh digiocean`).
+fixed IP `<VPS_STATIC_IP>` (`ssh digiocean`).
 
 **Rationale:**
 - The VPS has a fixed public IP that can be reliably allowlisted in
@@ -84,7 +84,7 @@ and update DNS). See `infra/scripts/rollback.sh`.
 - Firebase remains the primary backend; this is a scoped deviation for food
   search only.
 - VPS must be maintained (OS patches, Docker, Nginx).
-- FatSecret IP allowlist must include `165.22.147.90`.
+- FatSecret IP allowlist must include `<VPS_STATIC_IP>`.
 - Token cache lives in-process; horizontal scaling would require a shared
   cache (Redis) – deferred, tracked in pending-wiring.
 
