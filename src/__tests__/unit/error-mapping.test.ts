@@ -120,6 +120,49 @@ describe('mapFatSecretResponse', () => {
     expect(result).toEqual([]);
   });
 
+  it('falls back to food_description grams when servings are missing', () => {
+    const input = {
+      foods: {
+        food: [
+          {
+            food_id: '6',
+            food_name: 'White Rice',
+            food_description: 'Per 160g - Calories: 206kcal | Fat: 0.45g | Carbs: 44.50g | Protein: 4.24g',
+          },
+        ],
+      },
+    };
+
+    const result = mapFatSecretResponse(input);
+    expect(result).toEqual([
+      {
+        id: '6',
+        name: 'White Rice',
+        carbohydrate: 27.81,
+        protein: 2.65,
+        fat: 0.28,
+        serving: 100,
+      },
+    ]);
+  });
+
+  it('skips food_description fallback when grams are not provided', () => {
+    const input = {
+      foods: {
+        food: [
+          {
+            food_id: '7',
+            food_name: 'Cup Rice',
+            food_description: 'Per 1/4 cup - Calories: 160kcal | Fat: 0.00g | Carbs: 36.00g | Protein: 3.00g',
+          },
+        ],
+      },
+    };
+
+    const result = mapFatSecretResponse(input);
+    expect(result).toEqual([]);
+  });
+
   it('skips foods when serving amount is invalid', () => {
     const input = {
       foods: {
