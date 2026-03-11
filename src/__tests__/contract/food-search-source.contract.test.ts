@@ -16,7 +16,12 @@ jest.mock('../../auth/firebase-auth', () => ({
   verifyIdToken: jest.fn().mockResolvedValue({ uid: 'contract-test-user' }),
 }));
 
-// Mock FatSecret search client
+// Mock localized search service
+jest.mock('../../services/search-foods-localized.service', () => ({
+  searchFoodsLocalized: jest.fn(),
+}));
+
+// Keep FatSecretError class contract for controller error mapping
 jest.mock('../../fatsecret/search-client', () => ({
   searchFoods: jest.fn(),
   FatSecretError: class FatSecretError extends Error {
@@ -31,8 +36,10 @@ jest.mock('../../fatsecret/search-client', () => ({
   },
 }));
 
+import { searchFoodsLocalized } from '../../services/search-foods-localized.service';
 import { searchFoods } from '../../fatsecret/search-client';
 
+const mockedSearchFoodsLocalized = searchFoodsLocalized as jest.MockedFunction<typeof searchFoodsLocalized>;
 const mockedSearchFoods = searchFoods as jest.MockedFunction<typeof searchFoods>;
 
 describe('Contract: mobile client compatibility', () => {
@@ -42,6 +49,16 @@ describe('Contract: mobile client compatibility', () => {
     jest.clearAllMocks();
   });
 
+  function mockSearchResolved(results: unknown): void {
+    mockedSearchFoodsLocalized.mockResolvedValue(results as never);
+    mockedSearchFoods.mockResolvedValue(results as never);
+  }
+
+  function mockSearchRejected(error: unknown): void {
+    mockedSearchFoodsLocalized.mockRejectedValue(error);
+    mockedSearchFoods.mockRejectedValue(error);
+  }
+
   /**
    * CONTRACT: Successful search returns { results: [...] } with HTTP 200.
    * Results array contains raw food item objects.
@@ -50,7 +67,7 @@ describe('Contract: mobile client compatibility', () => {
     const mockFoods = [
       { id: '1', name: 'Banana', carbohydrate: 22.84, protein: 1.09, fat: 0.33, serving: 100 },
     ];
-    mockedSearchFoods.mockResolvedValue(mockFoods);
+    mockSearchResolved(mockFoods);
 
     const res = await request(app)
       .post('/searchFoods')
@@ -68,7 +85,7 @@ describe('Contract: mobile client compatibility', () => {
    * CONTRACT: Empty results are allowed – { results: [] } is valid.
    */
   it('C2: 200 response with empty results array is valid', async () => {
-    mockedSearchFoods.mockResolvedValue([]);
+    mockSearchResolved([]);
 
     const res = await request(app)
       .post('/searchFoods')
@@ -108,7 +125,7 @@ describe('Contract: mobile client compatibility', () => {
     const { FatSecretError } = jest.requireMock('../../fatsecret/search-client') as {
       FatSecretError: new (msg: string, code?: number, fsCode?: string) => Error & { fatSecretCode?: string };
     };
-    mockedSearchFoods.mockRejectedValue(new FatSecretError('quota', 403, 'quota_exceeded'));
+    mockSearchRejected(new FatSecretError('quota', 403, 'quota_exceeded'));
 
     const res = await request(app)
       .post('/searchFoods')
@@ -120,7 +137,7 @@ describe('Contract: mobile client compatibility', () => {
   });
 
   it('C6: 500 internal error is non-2xx, body has no secrets', async () => {
-    mockedSearchFoods.mockRejectedValue(new Error('secret DB password xyz'));
+    mockSearchRejected(new Error('secret DB password xyz'));
 
     const res = await request(app)
       .post('/searchFoods')
@@ -135,7 +152,7 @@ describe('Contract: mobile client compatibility', () => {
     const { FatSecretError } = jest.requireMock('../../fatsecret/search-client') as {
       FatSecretError: new (msg: string, code?: number, fsCode?: string) => Error & { fatSecretCode?: string };
     };
-    mockedSearchFoods.mockRejectedValue(
+    mockSearchRejected(
       new FatSecretError('upstream_ip_not_allowlisted', 502, 'upstream_ip_not_allowlisted'),
     );
 
@@ -152,7 +169,7 @@ describe('Contract: mobile client compatibility', () => {
    * CONTRACT: Content-Type must be application/json.
    */
   it('C8: Content-Type application/json is required for POST', async () => {
-    mockedSearchFoods.mockResolvedValue([]);
+    mockSearchResolved([]);
 
     const res = await request(app)
       .post('/searchFoods')

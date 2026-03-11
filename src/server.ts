@@ -11,6 +11,7 @@ import { logger } from './logger';
 import { authGuard } from './middleware/auth-guard';
 import { validateSearchFoodsBody } from './middleware/request-validator';
 import { searchFoodsController } from './controllers/search-foods.controller';
+import { getAllCounters } from './metrics';
 
 export function createApp(): express.Application {
   const app = express();
@@ -42,6 +43,11 @@ export function createApp(): express.Application {
   /** Health check – no auth required */
   app.get('/health', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'ok', service: 'food-microservice', timestamp: new Date().toISOString() });
+  });
+
+  /** Runtime counters for translation/cache observability */
+  app.get('/metrics', (_req: Request, res: Response) => {
+    res.status(200).json({ counters: getAllCounters() });
   });
 
   /**

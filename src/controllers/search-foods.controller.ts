@@ -15,6 +15,10 @@ import { Request, Response } from 'express';
 import { searchFoods, FatSecretError } from '../fatsecret/search-client';
 import { logger } from '../logger';
 import { SearchFoodsBody } from '../middleware/request-validator';
+import { searchFoodsLocalized } from '../services/search-foods-localized.service';
+import { config } from '../config';
+
+let loggedTranslationMisconfiguration = false;
 
 function serializeError(err: unknown): Record<string, unknown> {
   if (err instanceof FatSecretError) {
@@ -36,9 +40,18 @@ export async function searchFoodsController(
 ): Promise<void> {
   const { query, maxResults, region, language } = req.body as SearchFoodsBody;
   const uid = res.locals['uid'] as string;
+  const useTranslationPipeline =
+    config.enableTranslationPipeline && config.hasGoogleTranslateApiKey;
 
   try {
-    const results = await searchFoods(query, maxResults, region, language);
+    if (config.enableTranslationPipeline && !config.hasGoogleTranslateApiKey && !loggedTranslationMisconfiguration) {
+      logger.error('ENABLE_TRANSLATION_PIPELINE=true but GOOGLE_TRANSLATE_API_KEY is missing; falling back to English flow');
+      loggedTranslationMisconfiguration = true;
+    }
+
+    const results = useTranslationPipeline
+      ? await searchFoodsLocalized(query, maxResults, region, language)
+      : await searchFoods(query, maxResults, region, language);
     res.status(200).json({ results });
   } catch (err) {
     if (err instanceof FatSecretError) {

@@ -14,6 +14,7 @@ const redactPaths = [
   'token',
   'access_token',
   'client_secret',
+  'google_translate_api_key',
 ];
 
 export const logger = pino({
