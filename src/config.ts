@@ -130,8 +130,8 @@ export const config = {
   /** Query translation cache TTL (seconds) */
   queryTranslationCacheTtlSeconds: parseIntegerEnv('QUERY_TRANSLATION_CACHE_TTL_SECONDS', '2592000', { min: 60 }),
 
-  /** Feature flag for the Redis-backed internal catalog search route */
-  enableCatalogSearch: parseBooleanEnv('ENABLE_CATALOG_SEARCH', false),
+  /** Catalog search is always enabled */
+  enableCatalogSearch: true,
 
   /** Catalog index/version namespace suffix to support safe index migrations */
   catalogIndexVersion: optionalEnv('CATALOG_INDEX_VERSION', 'v1'),

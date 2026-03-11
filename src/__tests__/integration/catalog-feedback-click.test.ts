@@ -24,35 +24,13 @@ describe('POST /catalog/feedback/click', () => {
     expect(res.body.error).toBe('bad_request');
   });
 
-  it('returns 503 when catalog feature is disabled', async () => {
+  it('returns 200 with valid payload', async () => {
     const res = await request(app)
-      .post('/catalog/feedback/click')
-      .set('Authorization', VALID_AUTH)
-      .send({ lang: 'en', foodId: '1' });
-
-    expect(res.status).toBe(503);
-    expect(res.body).toEqual({
-      error: 'catalog_disabled',
-      message: 'Catalog search is disabled',
-    });
-  });
-
-  it('returns 200 when catalog feature is enabled', async () => {
-    const original = process.env.ENABLE_CATALOG_SEARCH;
-    process.env.ENABLE_CATALOG_SEARCH = 'true';
-    jest.resetModules();
-
-    const { createApp: createEnabledApp } = require('../../server') as typeof import('../../server');
-    const enabledApp = createEnabledApp();
-    const res = await request(enabledApp)
       .post('/catalog/feedback/click')
       .set('Authorization', VALID_AUTH)
       .send({ lang: 'en', foodId: '1' });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ ok: true });
-
-    process.env.ENABLE_CATALOG_SEARCH = original;
-    jest.resetModules();
   });
 });

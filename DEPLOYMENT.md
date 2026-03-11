@@ -135,7 +135,6 @@ and then stops the currently active slot.
 | `RATE_LIMIT_WINDOW_MS` | No | `60000` | Rate limit window |
 | `RATE_LIMIT_MAX` | No | `60` | Max requests per window |
 | `MAX_RESULTS_LIMIT` | No | `50` | Max `maxResults` cap |
-| `ENABLE_CATALOG_SEARCH` | No | `false` | Enables `/catalog/searchFoods` |
 | `ENABLE_CATALOG_INGESTION` | No | `false` | Enables catalog admin ingestion/review endpoints |
 | `CATALOG_ADMIN_API_KEY` | Conditionally | – | Required when `ENABLE_CATALOG_INGESTION=true` |
 | `CATALOG_SYNC_REGION` | No | `US` | Region used during catalog sync |

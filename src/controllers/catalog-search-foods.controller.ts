@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { config } from '../config';
 import { CatalogSearchFoodsBody } from '../middleware/validate-catalog-search-body';
 import { RedisCatalogProviderRepository } from '../catalog/infrastructure/redis/redis-catalog-provider.repository';
 import { createSearchFoodCatalogService } from '../catalog/application/search-food-catalog.service';
@@ -11,14 +10,6 @@ const defaultCatalogSearchService = createSearchFoodCatalogService({
 });
 
 export async function catalogSearchFoodsController(req: Request, res: Response): Promise<void> {
-  if (!config.enableCatalogSearch) {
-    res.status(503).json({
-      error: 'catalog_disabled',
-      message: 'Catalog search is disabled',
-    });
-    return;
-  }
-
   const { lang, query, page, pageSize, region } = req.body as CatalogSearchFoodsBody;
 
   try {

@@ -1,10 +1,9 @@
 # Catalog Big-Bang Rollout Checklist
 
 ## Objective
-Enable the Redis-backed multilingual catalog search for food with pre-release shadow validation and a fast rollback switch.
+Enable the Redis-backed multilingual catalog search for food with pre-release shadow validation.
 
 ## Preconditions
-- `ENABLE_CATALOG_SEARCH=true` in release environment.
 - `ENABLE_CATALOG_INGESTION=true` for sync/review workflows.
 - `CATALOG_ADMIN_API_KEY` configured for admin endpoints.
 - Redis reachable via `REDIS_URL`.
@@ -26,22 +25,16 @@ Enable the Redis-backed multilingual catalog search for food with pre-release sh
 
 ## Launch Steps
 1. Keep `/searchFoods` unchanged and enabled.
-2. Enable catalog endpoint in production:
-   - `ENABLE_CATALOG_SEARCH=true`
-3. Monitor for 60 minutes:
+2. Monitor for 60 minutes:
    - p95 latency for `/catalog/searchFoods`
    - error rate for `/catalog/*`
    - Redis command latency and memory pressure
-4. Keep admin sync disabled unless needed post-launch:
+3. Keep admin sync disabled unless needed post-launch:
    - Optional: `ENABLE_CATALOG_INGESTION=false` after initial sync/review window.
 
 ## Rollback (Immediate)
-1. Disable catalog route:
-   - `ENABLE_CATALOG_SEARCH=false`
-2. Redeploy (blue/green script or workflow already used for this service).
-3. Validate:
-   - `/catalog/searchFoods` returns `503 catalog_disabled`
-   - `/searchFoods` remains healthy and unchanged.
+1. Switch mobile traffic back to `/searchFoods`.
+2. Redeploy mobile app/config and validate `/searchFoods` remains healthy.
 
 ## Post-Launch Follow-Up
 - Track top zero-result queries by language.
