@@ -16,6 +16,13 @@ function optionalEnv(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
 
+function parseBooleanEnv(name: string, fallback: boolean): boolean {
+  const raw = optionalEnv(name, String(fallback)).trim().toLowerCase();
+  if (raw === 'true' || raw === '1' || raw === 'yes') return true;
+  if (raw === 'false' || raw === '0' || raw === 'no') return false;
+  throw new Error(`Environment variable ${name} must be a boolean`);
+}
+
 function parseIntegerEnv(
   name: string,
   fallback: string,
@@ -83,6 +90,36 @@ export const config = {
 
   /** Number of trusted proxy hops for correct client IP extraction behind Nginx */
   trustProxyHops: parseIntegerEnv('TRUST_PROXY_HOPS', '1', { min: 0 }),
+
+  /** Feature flag for translation pipeline around food search */
+  enableTranslationPipeline: parseBooleanEnv('ENABLE_TRANSLATION_PIPELINE', true),
+
+  /** Whether Google Translate API key is configured */
+  hasGoogleTranslateApiKey: optionalEnv('GOOGLE_TRANSLATE_API_KEY', '').trim().length > 0,
+
+  /** Google Translate API key */
+  googleTranslateApiKey: (): string => requireEnv('GOOGLE_TRANSLATE_API_KEY'),
+
+  /** Google Translate API base URL */
+  googleTranslateBaseUrl: optionalEnv(
+    'GOOGLE_TRANSLATE_BASE_URL',
+    'https://translation.googleapis.com/language/translate/v2',
+  ),
+
+  /** Timeout in milliseconds for Google Translate API calls */
+  translationTimeoutMs: parseIntegerEnv('TRANSLATION_TIMEOUT_MS', '5000', { min: 100 }),
+
+  /** Max retries for transient Google Translate API errors */
+  translationRetries: parseIntegerEnv('TRANSLATION_RETRIES', '2', { min: 0, max: 8 }),
+
+  /** Base delay in milliseconds for translation retry backoff */
+  translationRetryBaseDelayMs: parseIntegerEnv('TRANSLATION_RETRY_BASE_DELAY_MS', '150', { min: 10, max: 5000 }),
+
+  /** Redis URL used for translation cache storage */
+  redisUrl: optionalEnv('REDIS_URL', ''),
+
+  /** Query translation cache TTL (seconds) */
+  queryTranslationCacheTtlSeconds: parseIntegerEnv('QUERY_TRANSLATION_CACHE_TTL_SECONDS', '2592000', { min: 60 }),
 
   /** Log level */
   logLevel: optionalEnv('LOG_LEVEL', 'info'),

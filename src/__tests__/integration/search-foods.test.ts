@@ -12,7 +12,12 @@ jest.mock('../../auth/firebase-auth', () => ({
   verifyIdToken: jest.fn().mockResolvedValue({ uid: 'test-user-123' }),
 }));
 
-// Mock FatSecret search client
+// Mock localized search service
+jest.mock('../../services/search-foods-localized.service', () => ({
+  searchFoodsLocalized: jest.fn(),
+}));
+
+// Keep FatSecretError class contract for controller error mapping
 jest.mock('../../fatsecret/search-client', () => ({
   searchFoods: jest.fn(),
   FatSecretError: class FatSecretError extends Error {
@@ -27,9 +32,10 @@ jest.mock('../../fatsecret/search-client', () => ({
   },
 }));
 
-import { searchFoods } from '../../fatsecret/search-client';
-import { FatSecretError } from '../../fatsecret/search-client';
+import { searchFoodsLocalized } from '../../services/search-foods-localized.service';
+import { searchFoods, FatSecretError } from '../../fatsecret/search-client';
 
+const mockedSearchFoodsLocalized = searchFoodsLocalized as jest.MockedFunction<typeof searchFoodsLocalized>;
 const mockedSearchFoods = searchFoods as jest.MockedFunction<typeof searchFoods>;
 
 const VALID_AUTH = 'Bearer valid-firebase-token';
@@ -47,9 +53,19 @@ describe('POST /searchFoods', () => {
     jest.clearAllMocks();
   });
 
+  function mockSearchResolved(results: unknown): void {
+    mockedSearchFoodsLocalized.mockResolvedValue(results as never);
+    mockedSearchFoods.mockResolvedValue(results as never);
+  }
+
+  function mockSearchRejected(error: unknown): void {
+    mockedSearchFoodsLocalized.mockRejectedValue(error);
+    mockedSearchFoods.mockRejectedValue(error);
+  }
+
   describe('Happy path', () => {
     it('returns 200 with results array', async () => {
-      mockedSearchFoods.mockResolvedValue(MOCK_FOOD_ITEMS);
+      mockSearchResolved(MOCK_FOOD_ITEMS);
 
       const res = await request(app)
         .post('/searchFoods')
@@ -63,7 +79,7 @@ describe('POST /searchFoods', () => {
     });
 
     it('returns 200 with empty results when no foods found', async () => {
-      mockedSearchFoods.mockResolvedValue([]);
+      mockSearchResolved([]);
 
       const res = await request(app)
         .post('/searchFoods')
@@ -123,7 +139,7 @@ describe('POST /searchFoods', () => {
 
   describe('Error mapping', () => {
     it('returns 200 + quota_exceeded body on quota exceeded (client compatibility)', async () => {
-      mockedSearchFoods.mockRejectedValue(
+      mockSearchRejected(
         new FatSecretError('quota_exceeded', 403, 'quota_exceeded'),
       );
 
@@ -137,7 +153,7 @@ describe('POST /searchFoods', () => {
     });
 
     it('returns 400 on FatSecret bad_request error', async () => {
-      mockedSearchFoods.mockRejectedValue(
+      mockSearchRejected(
         new FatSecretError('Bad request', 400, 'bad_request'),
       );
 
@@ -150,7 +166,7 @@ describe('POST /searchFoods', () => {
     });
 
     it('returns 502 when FatSecret IP is not allowlisted', async () => {
-      mockedSearchFoods.mockRejectedValue(
+      mockSearchRejected(
         new FatSecretError('upstream_ip_not_allowlisted', 502, 'upstream_ip_not_allowlisted'),
       );
 
@@ -167,7 +183,7 @@ describe('POST /searchFoods', () => {
     });
 
     it('returns 500 on unexpected error', async () => {
-      mockedSearchFoods.mockRejectedValue(new Error('Network failure'));
+      mockSearchRejected(new Error('Network failure'));
 
       const res = await request(app)
         .post('/searchFoods')
@@ -188,6 +204,14 @@ describe('POST /searchFoods', () => {
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('ok');
       expect(res.body.service).toBe('food-microservice');
+    });
+
+    it('returns 200 with counters object on /metrics', async () => {
+      const res = await request(app).get('/metrics');
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('counters');
+      expect(typeof res.body.counters).toBe('object');
     });
   });
 
