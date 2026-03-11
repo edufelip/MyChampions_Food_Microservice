@@ -1,3 +1,5 @@
+import { DEFAULT_CATALOG_SEED_QUERIES } from './catalog/seeds/default-seed-queries';
+
 /**
  * Central configuration module – reads environment variables once and
  * exposes a typed, validated config object. Fails fast if a required
@@ -42,6 +44,13 @@ function parseIntegerEnv(
   }
 
   return parsed;
+}
+
+function parseCsvList(raw: string): string[] {
+  return raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
 }
 
 export const config = {
@@ -120,6 +129,48 @@ export const config = {
 
   /** Query translation cache TTL (seconds) */
   queryTranslationCacheTtlSeconds: parseIntegerEnv('QUERY_TRANSLATION_CACHE_TTL_SECONDS', '2592000', { min: 60 }),
+
+  /** Feature flag for the Redis-backed internal catalog search route */
+  enableCatalogSearch: parseBooleanEnv('ENABLE_CATALOG_SEARCH', false),
+
+  /** Catalog index/version namespace suffix to support safe index migrations */
+  catalogIndexVersion: optionalEnv('CATALOG_INDEX_VERSION', 'v1'),
+
+  /** Minimum normalized query length before switching from popular feed to index search */
+  catalogMinQueryLength: parseIntegerEnv('CATALOG_MIN_QUERY_LENGTH', '2', { min: 0, max: 20 }),
+
+  /** Max bounded edit-distance used by typo-tolerant search (future phase) */
+  catalogTypoMaxDistance: parseIntegerEnv('CATALOG_TYPO_MAX_DISTANCE', '1', { min: 0, max: 3 }),
+
+  /** Planned catalog ingestion sync interval in seconds */
+  catalogSyncIntervalSeconds: parseIntegerEnv('CATALOG_SYNC_INTERVAL_SECONDS', '3600', { min: 60 }),
+
+  /** Default catalog page size when not provided by client */
+  catalogDefaultPageSize: parseIntegerEnv('CATALOG_DEFAULT_PAGE_SIZE', '20', { min: 1, max: 100 }),
+
+  /** Maximum catalog page size allowed from client */
+  catalogMaxPageSize: parseIntegerEnv('CATALOG_MAX_PAGE_SIZE', '50', { min: 1, max: 100 }),
+
+  /** Feature flag for catalog ingestion/sync operations */
+  enableCatalogIngestion: parseBooleanEnv('ENABLE_CATALOG_INGESTION', false),
+
+  /** Shared secret required for catalog admin ingestion endpoints */
+  catalogAdminApiKey: optionalEnv('CATALOG_ADMIN_API_KEY', '').trim(),
+
+  /** Comma-separated seed queries for catalog sync from FatSecret */
+  catalogSyncSeedQueries: (() => {
+    const override = process.env['CATALOG_SYNC_SEED_QUERIES'];
+    if (override !== undefined) {
+      return parseCsvList(override);
+    }
+    return DEFAULT_CATALOG_SEED_QUERIES;
+  })(),
+
+  /** Region used for seed ingestion requests to FatSecret */
+  catalogSyncRegion: optionalEnv('CATALOG_SYNC_REGION', 'US').trim() || 'US',
+
+  /** Max results fetched per seed query during catalog sync */
+  catalogSyncMaxResultsPerQuery: parseIntegerEnv('CATALOG_SYNC_MAX_RESULTS_PER_QUERY', '50', { min: 1, max: 200 }),
 
   /** Log level */
   logLevel: optionalEnv('LOG_LEVEL', 'info'),

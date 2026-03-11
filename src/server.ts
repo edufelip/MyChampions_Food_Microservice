@@ -12,6 +12,16 @@ import { authGuard } from './middleware/auth-guard';
 import { validateSearchFoodsBody } from './middleware/request-validator';
 import { searchFoodsController } from './controllers/search-foods.controller';
 import { getAllCounters } from './metrics';
+import { validateCatalogSearchBody } from './middleware/validate-catalog-search-body';
+import { catalogSearchFoodsController } from './controllers/catalog-search-foods.controller';
+import { catalogHealthController } from './controllers/catalog-health.controller';
+import { catalogSyncController } from './controllers/catalog-sync.controller';
+import { validateCatalogClickBody } from './middleware/validate-catalog-click-body';
+import { catalogFeedbackClickController } from './controllers/catalog-feedback-click.controller';
+import { requireCatalogAdmin } from './middleware/require-catalog-admin';
+import { validateCatalogSyncBody } from './middleware/validate-catalog-sync-body';
+import { validateCatalogLocalizationReviewBody } from './middleware/validate-catalog-localization-review-body';
+import { catalogLocalizationReviewController } from './controllers/catalog-localization-review.controller';
 
 export function createApp(): express.Application {
   const app = express();
@@ -62,6 +72,35 @@ export function createApp(): express.Application {
     validateSearchFoodsBody,
     searchFoodsController,
   );
+
+  /**
+   * POST /catalog/searchFoods
+   * Internal Redis-backed multilingual catalog search.
+   */
+  app.post(
+    '/catalog/searchFoods',
+    authGuard,
+    validateCatalogSearchBody,
+    catalogSearchFoodsController,
+  );
+
+  /** Catalog readiness and index freshness */
+  app.get('/catalog/health', catalogHealthController);
+
+  /** Authenticated trigger for catalog seed sync */
+  app.post('/catalog/admin/sync', authGuard, requireCatalogAdmin, validateCatalogSyncBody, catalogSyncController);
+
+  /** Admin endpoint to update machine/reviewed/rejected localization status */
+  app.post(
+    '/catalog/admin/localization/review',
+    authGuard,
+    requireCatalogAdmin,
+    validateCatalogLocalizationReviewBody,
+    catalogLocalizationReviewController,
+  );
+
+  /** Click feedback signal for catalog popularity ranking */
+  app.post('/catalog/feedback/click', authGuard, validateCatalogClickBody, catalogFeedbackClickController);
 
   // ─── 404 ───────────────────────────────────────────────────────────────────
 
