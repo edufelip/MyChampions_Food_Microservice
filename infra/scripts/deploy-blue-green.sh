@@ -27,6 +27,11 @@ log() {
   printf '%s\n' "$*"
 }
 
+normalize_state() {
+  local raw="$1"
+  printf '%s' "$raw" | tr '\t' ' ' | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//'
+}
+
 container_state() {
   local container_name="$1"
   if docker inspect "$container_name" >/dev/null 2>&1; then
@@ -47,7 +52,7 @@ capture_protected_state() {
   local line
   line="$(ss -ltnp | grep -E ":${port}[[:space:]]" | head -n1 || true)"
   if [[ -n "$line" ]]; then
-    printf 'port|%s\n' "$line"
+    printf 'port|%s\n' "$(normalize_state "$line")"
     return
   fi
 
