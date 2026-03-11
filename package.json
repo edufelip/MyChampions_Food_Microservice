@@ -12,7 +12,8 @@
     "test:integration": "jest --testPathPattern='src/__tests__/integration' --forceExit",
     "test:contract": "jest --testPathPattern='src/__tests__/contract' --forceExit",
     "lint": "eslint 'src/**/*.ts'",
-    "lint:fix": "eslint 'src/**/*.ts' --fix"
+    "lint:fix": "eslint 'src/**/*.ts' --fix",
+    "catalog:shadow-validate": "node infra/scripts/catalog-shadow-validate.js"
   },
   "dependencies": {
     "axios": "^1.13.6",
