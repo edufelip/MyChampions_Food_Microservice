@@ -90,4 +90,28 @@ describe('startup-catalog-sync.service', () => {
     resolveSync();
     await Promise.all([first, second]);
   });
+
+  it('records failure reason code when sync throws typed error', async () => {
+    const syncCatalog = jest.fn().mockRejectedValue({ code: 'catalog_translation_failed_pt' });
+    const service = createStartupCatalogSyncService({
+      provider: {
+        getHealth: jest.fn().mockResolvedValue({
+          enabled: true,
+          ready: false,
+          indexVersion: 'v1',
+          documentCount: 0,
+          lastFreshnessAt: null,
+        }),
+      },
+      syncCatalog,
+      now: () => 1_000,
+      enabled: true,
+      cooldownMs: 30_000,
+    });
+
+    await service('startup');
+
+    expect(getCounter('catalog.startup_sync_failure')).toBe(1);
+    expect(getCounter('catalog.startup_sync_failure.reason.catalog_translation_failed_pt')).toBe(1);
+  });
 });

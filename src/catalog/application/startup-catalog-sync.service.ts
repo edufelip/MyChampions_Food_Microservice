@@ -13,6 +13,13 @@ interface StartupCatalogSyncDeps {
   cooldownMs: number;
 }
 
+function normalizeErrorCode(error: unknown): string {
+  if (typeof error !== 'object' || error === null) return 'unknown';
+  const candidate = (error as { code?: unknown }).code;
+  if (typeof candidate !== 'string' || candidate.trim().length === 0) return 'unknown';
+  return candidate.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+}
+
 export function createStartupCatalogSyncService(
   deps: StartupCatalogSyncDeps,
 ): (reason?: string) => Promise<void> {
@@ -72,8 +79,10 @@ export function createStartupCatalogSyncService(
         incrementCounter('catalog.startup_sync_success');
         logger.info({ reason, result }, 'Catalog startup sync completed');
       } catch (error) {
+        const errorCode = normalizeErrorCode(error);
         incrementCounter('catalog.startup_sync_failure');
-        logger.error({ error, reason }, 'Catalog startup sync failed');
+        incrementCounter(`catalog.startup_sync_failure.reason.${errorCode}`);
+        logger.error({ error, reason, errorCode }, 'Catalog startup sync failed');
       }
     })().finally(() => {
       inFlight = null;

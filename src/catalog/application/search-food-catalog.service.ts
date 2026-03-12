@@ -3,7 +3,7 @@ import { logger } from '../../logger';
 import { incrementCounter } from '../../metrics';
 import { CatalogProviderPort } from '../domain/catalog-ports';
 import { CatalogSearchRequest, CatalogSearchResponse } from '../domain/catalog-models';
-import { normalizeCatalogQuery } from './query-normalizer';
+import { rewriteCatalogQuery } from './query-rewrite';
 
 interface SearchFoodCatalogServiceDeps {
   provider: CatalogProviderPort;
@@ -15,9 +15,23 @@ export function createSearchFoodCatalogService(
 ): (request: CatalogSearchRequest) => Promise<CatalogSearchResponse> {
   return async (request: CatalogSearchRequest): Promise<CatalogSearchResponse> => {
     const startedAt = deps.now();
-    const normalizedQuery = normalizeCatalogQuery(request.query);
+    const queryRewrite = rewriteCatalogQuery(request.lang, request.query);
+    const normalizedQuery = queryRewrite.normalizedQuery;
     let catalogReady = true;
     let catalogDocumentCount = 0;
+
+    if (queryRewrite.rewrittenFrom) {
+      incrementCounter('catalog.query_rewrite');
+      incrementCounter(`catalog.query_rewrite.lang.${request.lang}`);
+      logger.info(
+        {
+          lang: request.lang,
+          rewrittenFrom: queryRewrite.rewrittenFrom,
+          rewrittenTo: normalizedQuery,
+        },
+        'Catalog query rewritten using alias mapping',
+      );
+    }
 
     try {
       const health = await deps.provider.getHealth();
@@ -91,6 +105,8 @@ export function createSearchFoodCatalogService(
       meta: {
         lang: request.lang,
         normalizedQuery,
+        rewriteApplied: Boolean(queryRewrite.rewrittenFrom),
+        rewrittenFrom: queryRewrite.rewrittenFrom,
         tookMs: Math.max(0, deps.now() - startedAt),
       },
     };

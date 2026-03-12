@@ -53,6 +53,8 @@ function parseCsvList(raw: string): string[] {
     .filter((value) => value.length > 0);
 }
 
+const MIN_CATALOG_SEED_QUERIES = 50;
+
 export const config = {
   /** TCP port the HTTP server listens on */
   port: parseIntegerEnv('PORT', '3000', { min: 1, max: 65535 }),
@@ -167,7 +169,13 @@ export const config = {
   catalogSyncSeedQueries: (() => {
     const override = process.env['CATALOG_SYNC_SEED_QUERIES'];
     if (override !== undefined) {
-      return parseCsvList(override);
+      const parsed = parseCsvList(override);
+      if (parsed.length < MIN_CATALOG_SEED_QUERIES) {
+        throw new Error(
+          `CATALOG_SYNC_SEED_QUERIES must include at least ${MIN_CATALOG_SEED_QUERIES} entries`,
+        );
+      }
+      return parsed;
     }
     return DEFAULT_CATALOG_SEED_QUERIES;
   })(),
@@ -177,6 +185,12 @@ export const config = {
 
   /** Max results fetched per seed query during catalog sync */
   catalogSyncMaxResultsPerQuery: parseIntegerEnv('CATALOG_SYNC_MAX_RESULTS_PER_QUERY', '50', { min: 1, max: 200 }),
+
+  /** Max concurrent upstream seed searches during catalog sync */
+  catalogSyncConcurrency: parseIntegerEnv('CATALOG_SYNC_CONCURRENCY', '5', { min: 1, max: 25 }),
+
+  /** When true, catalog sync fails if Portuguese localization cannot be produced */
+  strictPtLocalization: parseBooleanEnv('CATALOG_STRICT_PT_LOCALIZATION', true),
 
   /** Log level */
   logLevel: optionalEnv('LOG_LEVEL', 'info'),

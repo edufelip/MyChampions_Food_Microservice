@@ -17,12 +17,42 @@ interface SyncFoodCatalogDeps {
 
 const TRANSLATION_BATCH_SIZE = 100;
 
+export class CatalogSyncError extends Error {
+  constructor(public readonly code: string, message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = 'CatalogSyncError';
+  }
+}
+
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let index = 0; index < items.length; index += size) {
     chunks.push(items.slice(index, index + size));
   }
   return chunks;
+}
+
+async function mapWithConcurrency<TInput, TOutput>(
+  items: TInput[],
+  concurrency: number,
+  mapper: (item: TInput, index: number) => Promise<TOutput>,
+): Promise<TOutput[]> {
+  if (items.length === 0) return [];
+  const effectiveConcurrency = Math.max(1, Math.min(concurrency, items.length));
+  const results: TOutput[] = new Array(items.length);
+  let nextIndex = 0;
+
+  const workers = Array.from({ length: effectiveConcurrency }, async () => {
+    while (true) {
+      const current = nextIndex;
+      nextIndex += 1;
+      if (current >= items.length) return;
+      results[current] = await mapper(items[current] as TInput, current);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
 }
 
 export interface CatalogSyncRequest {
@@ -68,6 +98,13 @@ async function buildLocalizedNames(
     });
     return map;
   } catch (error) {
+    if (lang === 'pt' && config.strictPtLocalization) {
+      throw new CatalogSyncError(
+        'catalog_translation_failed_pt',
+        'Portuguese localization failed during catalog sync',
+        error,
+      );
+    }
     logger.warn({ error, lang }, 'Catalog translation failed; falling back to English names');
     return new Map(englishNames.map((name) => [name, name]));
   }
@@ -82,8 +119,10 @@ export function createSyncFoodCatalogService(deps: SyncFoodCatalogDeps): (reques
       Math.min(request?.maxResultsPerQuery ?? config.catalogSyncMaxResultsPerQuery, config.maxResultsLimit),
     );
 
-    const fetchedByQuery = await Promise.all(
-      seedQueries.map((query) => deps.searchClient(query, maxResultsPerQuery, region, 'en')),
+    const fetchedByQuery = await mapWithConcurrency(
+      seedQueries,
+      config.catalogSyncConcurrency,
+      async (query) => deps.searchClient(query, maxResultsPerQuery, region, 'en'),
     );
     const fetchedItems = fetchedByQuery.flat();
     const uniqueItems = uniqueById(fetchedItems);

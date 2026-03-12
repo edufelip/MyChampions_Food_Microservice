@@ -141,7 +141,9 @@ and then stops the currently active slot.
 | `CATALOG_ADMIN_API_KEY` | Conditionally | – | Required when `ENABLE_CATALOG_INGESTION=true` |
 | `CATALOG_SYNC_REGION` | No | `US` | Region used during catalog sync |
 | `CATALOG_SYNC_MAX_RESULTS_PER_QUERY` | No | `50` | Per-seed query FatSecret max results (capped by `MAX_RESULTS_LIMIT`) |
+| `CATALOG_SYNC_CONCURRENCY` | No | `5` | Max concurrent FatSecret seed requests during sync |
 | `CATALOG_SYNC_SEED_QUERIES` | No | – | Optional CSV override for default seed list |
+| `CATALOG_STRICT_PT_LOCALIZATION` | No | `true` | Fails catalog sync when Portuguese translation cannot be generated |
 
 ### Catalog Seed Defaults
 

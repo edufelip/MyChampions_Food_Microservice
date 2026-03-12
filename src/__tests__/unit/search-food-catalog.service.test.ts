@@ -88,4 +88,49 @@ describe('search-food-catalog.service', () => {
     expect(getCounter('catalog.empty_response.lang.pt')).toBe(1);
     expect(getCounter('catalog.empty_response.region.br')).toBe(1);
   });
+
+  it('rewrites pt alias queries before searching', async () => {
+    const provider = {
+      searchByPrefix: jest.fn().mockResolvedValue({
+        total: 1,
+        items: [{ id: '9', name: 'Patinho Magro', carbohydrate: 0, protein: 26, fat: 7, serving: 100 }],
+      }),
+      getPopular: jest.fn(),
+      getHealth: jest.fn().mockResolvedValue({
+        enabled: true,
+        ready: true,
+        indexVersion: 'v1',
+        documentCount: 500,
+        lastFreshnessAt: '2026-03-11T00:00:00.000Z',
+      }),
+      recordServed: jest.fn().mockResolvedValue(undefined),
+      recordClicked: jest.fn(),
+    };
+
+    const service = createSearchFoodCatalogService({
+      provider,
+      now: () => 1000,
+    });
+
+    const response = await service({
+      lang: 'pt',
+      query: 'Patinho',
+      page: 1,
+      pageSize: 20,
+      region: 'br',
+    });
+
+    expect(provider.searchByPrefix).toHaveBeenCalledWith(
+      expect.objectContaining({
+        normalizedQuery: 'lean ground beef',
+      }),
+    );
+    expect(response.meta).toMatchObject({
+      normalizedQuery: 'lean ground beef',
+      rewriteApplied: true,
+      rewrittenFrom: 'patinho',
+    });
+    expect(getCounter('catalog.query_rewrite')).toBe(1);
+    expect(getCounter('catalog.query_rewrite.lang.pt')).toBe(1);
+  });
 });

@@ -48,6 +48,8 @@ export interface CatalogSearchResponse {
   meta: {
     lang: CatalogLanguage;
     normalizedQuery: string;
+    rewriteApplied?: boolean;
+    rewrittenFrom?: string;
     tookMs: number;
   };
 }

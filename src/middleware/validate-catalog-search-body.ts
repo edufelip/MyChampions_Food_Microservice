@@ -8,10 +8,14 @@ export interface CatalogSearchFoodsBody {
   page: number;
   pageSize: number;
   region?: string;
+  mentionsEnglish: boolean;
 }
 
 export function validateCatalogSearchBody(req: Request, res: Response, next: NextFunction): void {
-  const payload = req.body as Partial<CatalogSearchFoodsBody>;
+  const payload = ((req.body && typeof req.body === 'object') ? req.body : {}) as Partial<CatalogSearchFoodsBody>;
+  const payloadValues = Object.values(payload);
+  const mentionsEnglish =
+    payloadValues.some((value) => typeof value === 'string' && value.toLowerCase().includes('english'));
 
   if (typeof payload.lang !== 'string' || !isCatalogLanguage(payload.lang)) {
     res.status(400).json({
@@ -73,6 +77,7 @@ export function validateCatalogSearchBody(req: Request, res: Response, next: Nex
     page: payload.page ?? 1,
     pageSize: Math.min(payload.pageSize ?? config.catalogDefaultPageSize, config.catalogMaxPageSize),
     region: payload.region?.trim(),
+    mentionsEnglish,
   } satisfies CatalogSearchFoodsBody;
 
   next();

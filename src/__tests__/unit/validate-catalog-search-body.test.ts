@@ -58,6 +58,7 @@ describe('validateCatalogSearchBody', () => {
       page: 1,
       pageSize: 50,
       region: 'br',
+      mentionsEnglish: false,
     });
   });
 
@@ -77,6 +78,38 @@ describe('validateCatalogSearchBody', () => {
       page: 1,
       pageSize: 20,
       region: undefined,
+      mentionsEnglish: false,
     });
+  });
+
+  it('sets mentionsEnglish when payload contains the english hint text', () => {
+    const req = mockReq({
+      lang: 'pt',
+      query: 'arroz',
+      notes: 'please fallback to english terms',
+    });
+    const { res } = mockRes();
+
+    validateCatalogSearchBody(req as Request, res as Response, next);
+
+    expect(next).toHaveBeenCalled();
+    expect((req as Request).body).toEqual({
+      lang: 'pt',
+      query: 'arroz',
+      page: 1,
+      pageSize: 20,
+      region: undefined,
+      mentionsEnglish: true,
+    });
+  });
+
+  it('handles null body and returns validation error instead of crashing', () => {
+    const req = mockReq(null);
+    const { res, statusFn } = mockRes();
+
+    validateCatalogSearchBody(req as Request, res as Response, next);
+
+    expect(statusFn).toHaveBeenCalledWith(400);
+    expect(next).not.toHaveBeenCalled();
   });
 });
