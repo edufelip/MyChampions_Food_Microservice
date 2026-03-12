@@ -3,7 +3,7 @@ import { logger } from '../../logger';
 import { incrementCounter } from '../../metrics';
 import { CatalogProviderPort } from '../domain/catalog-ports';
 import { CatalogSearchRequest, CatalogSearchResponse } from '../domain/catalog-models';
-import { rewriteCatalogQuery } from './query-rewrite';
+import { buildCatalogQueryCandidates } from './query-rewrite';
 
 interface SearchFoodCatalogServiceDeps {
   provider: CatalogProviderPort;
@@ -15,7 +15,7 @@ export function createSearchFoodCatalogService(
 ): (request: CatalogSearchRequest) => Promise<CatalogSearchResponse> {
   return async (request: CatalogSearchRequest): Promise<CatalogSearchResponse> => {
     const startedAt = deps.now();
-    const queryRewrite = rewriteCatalogQuery(request.lang, request.query);
+    const queryRewrite = buildCatalogQueryCandidates(request.lang, request.query);
     const normalizedQuery = queryRewrite.normalizedQuery;
     let catalogReady = true;
     let catalogDocumentCount = 0;
@@ -59,30 +59,43 @@ export function createSearchFoodCatalogService(
       );
     }
 
-    const source =
-      normalizedQuery.length < config.catalogMinQueryLength
-        ? await deps.provider.getPopular({
-            lang: request.lang,
-            page: request.page,
-            pageSize: request.pageSize,
-            region: request.region,
-          })
-        : await deps.provider.searchByPrefix({
-            lang: request.lang,
-            normalizedQuery,
-            page: request.page,
-            pageSize: request.pageSize,
-            region: request.region,
-          });
+    const candidates = queryRewrite.candidateQueries.length > 0 ? queryRewrite.candidateQueries : [normalizedQuery];
+    let source = { total: 0, items: [] as CatalogSearchResponse['results'] };
+    let selectedNormalizedQuery = normalizedQuery;
+    let lastAttemptedQuery = normalizedQuery;
 
-    if (normalizedQuery.length > 0 && source.total === 0) {
+    for (const candidate of candidates) {
+      lastAttemptedQuery = candidate;
+      source =
+        candidate.length < config.catalogMinQueryLength
+          ? await deps.provider.getPopular({
+              lang: request.lang,
+              page: request.page,
+              pageSize: request.pageSize,
+              region: request.region,
+            })
+          : await deps.provider.searchByPrefix({
+              lang: request.lang,
+              normalizedQuery: candidate,
+              page: request.page,
+              pageSize: request.pageSize,
+              region: request.region,
+            });
+
+      if (source.total > 0) {
+        selectedNormalizedQuery = candidate;
+        break;
+      }
+    }
+
+    if (lastAttemptedQuery.length > 0 && source.total === 0) {
       incrementCounter('catalog.empty_response');
       incrementCounter(`catalog.empty_response.lang.${request.lang}`);
       if (request.region?.trim()) {
         incrementCounter(`catalog.empty_response.region.${request.region.trim().toLowerCase()}`);
       }
       logger.warn(
-        { lang: request.lang, region: request.region, normalizedQuery },
+        { lang: request.lang, region: request.region, normalizedQuery: lastAttemptedQuery, attempts: candidates },
         'Catalog search returned empty results',
       );
     }
@@ -104,7 +117,7 @@ export function createSearchFoodCatalogService(
       results: source.items,
       meta: {
         lang: request.lang,
-        normalizedQuery,
+        normalizedQuery: selectedNormalizedQuery,
         rewriteApplied: Boolean(queryRewrite.rewrittenFrom),
         rewrittenFrom: queryRewrite.rewrittenFrom,
         tookMs: Math.max(0, deps.now() - startedAt),

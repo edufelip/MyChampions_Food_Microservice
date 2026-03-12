@@ -1,4 +1,4 @@
-import { rewriteCatalogQuery } from '../../catalog/application/query-rewrite';
+import { buildCatalogQueryCandidates, rewriteCatalogQuery } from '../../catalog/application/query-rewrite';
 
 describe('query-rewrite', () => {
   it('rewrites patinho to lean ground beef for pt', () => {
@@ -18,6 +18,14 @@ describe('query-rewrite', () => {
   it('does not rewrite non-pt queries', () => {
     expect(rewriteCatalogQuery('en', 'patinho')).toEqual({
       normalizedQuery: 'patinho',
+    });
+  });
+
+  it('builds fallback candidates for Portuguese aliases', () => {
+    expect(buildCatalogQueryCandidates('pt', 'Bife')).toEqual({
+      normalizedQuery: 'beef steak',
+      rewrittenFrom: 'bife',
+      candidateQueries: ['beef steak', 'steak', 'beef', 'bife'],
     });
   });
 });

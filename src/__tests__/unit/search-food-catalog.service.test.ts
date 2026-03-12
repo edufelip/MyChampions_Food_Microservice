@@ -133,4 +133,54 @@ describe('search-food-catalog.service', () => {
     expect(getCounter('catalog.query_rewrite')).toBe(1);
     expect(getCounter('catalog.query_rewrite.lang.pt')).toBe(1);
   });
+
+  it('tries fallback alias candidates until finding results', async () => {
+    const provider = {
+      searchByPrefix: jest
+        .fn()
+        .mockResolvedValueOnce({
+          total: 0,
+          items: [],
+        })
+        .mockResolvedValueOnce({
+          total: 1,
+          items: [{ id: '2', name: 'Ground Beef', carbohydrate: 0, protein: 26, fat: 10, serving: 100 }],
+        }),
+      getPopular: jest.fn(),
+      getHealth: jest.fn().mockResolvedValue({
+        enabled: true,
+        ready: true,
+        indexVersion: 'v1',
+        documentCount: 500,
+        lastFreshnessAt: '2026-03-11T00:00:00.000Z',
+      }),
+      recordServed: jest.fn().mockResolvedValue(undefined),
+      recordClicked: jest.fn(),
+    };
+
+    const service = createSearchFoodCatalogService({
+      provider,
+      now: () => 1000,
+    });
+
+    const response = await service({
+      lang: 'pt',
+      query: 'patinho',
+      page: 1,
+      pageSize: 20,
+      region: 'br',
+    });
+
+    expect(provider.searchByPrefix).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ normalizedQuery: 'lean ground beef' }),
+    );
+    expect(provider.searchByPrefix).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ normalizedQuery: 'ground beef' }),
+    );
+    expect(response.total).toBe(1);
+    expect(response.meta.normalizedQuery).toBe('ground beef');
+    expect(getCounter('catalog.empty_response')).toBe(0);
+  });
 });
