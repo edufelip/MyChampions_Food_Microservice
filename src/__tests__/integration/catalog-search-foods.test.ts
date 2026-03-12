@@ -122,6 +122,9 @@ describe('Catalog endpoints', () => {
       ready: false,
       indexVersion: 'v1',
       documentCount: 0,
+      stale: true,
+      maxAgeDays: 180,
+      freshnessAgeDays: null,
     });
   });
 });
