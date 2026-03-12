@@ -14,6 +14,7 @@ Enable the Redis-backed multilingual catalog search for food with pre-release sh
    - `POST /catalog/admin/sync`
 2. Verify health:
    - `GET /catalog/health` returns `ready=true`, `documentCount > 0`.
+   - `POST /catalog/searchFoods` smoke query in Portuguese (e.g., `batata`) returns at least one result.
 3. Run shadow validation against production-like traffic:
    - `npm run catalog:shadow-validate`
 4. Confirm acceptable overlap and status distribution:
