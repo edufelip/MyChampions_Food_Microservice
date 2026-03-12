@@ -136,6 +136,8 @@ and then stops the currently active slot.
 | `RATE_LIMIT_MAX` | No | `60` | Max requests per window |
 | `MAX_RESULTS_LIMIT` | No | `50` | Max `maxResults` cap |
 | `ENABLE_CATALOG_INGESTION` | No | `false` | Enables catalog admin ingestion/review endpoints |
+| `ENABLE_STARTUP_CATALOG_SYNC` | No | `true` | Triggers background catalog sync on startup when catalog is empty/unready |
+| `STARTUP_CATALOG_SYNC_COOLDOWN_MS` | No | `900000` | Cooldown between startup sync attempts |
 | `CATALOG_ADMIN_API_KEY` | Conditionally | – | Required when `ENABLE_CATALOG_INGESTION=true` |
 | `CATALOG_SYNC_REGION` | No | `US` | Region used during catalog sync |
 | `CATALOG_SYNC_MAX_RESULTS_PER_QUERY` | No | `50` | Per-seed query FatSecret max results (capped by `MAX_RESULTS_LIMIT`) |

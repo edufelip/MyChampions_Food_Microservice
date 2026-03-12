@@ -154,6 +154,12 @@ export const config = {
   /** Feature flag for catalog ingestion/sync operations */
   enableCatalogIngestion: parseBooleanEnv('ENABLE_CATALOG_INGESTION', false),
 
+  /** Auto-sync catalog on startup when health indicates empty/unready */
+  enableStartupCatalogSync: parseBooleanEnv('ENABLE_STARTUP_CATALOG_SYNC', true),
+
+  /** Cooldown window between startup sync attempts (milliseconds) */
+  startupCatalogSyncCooldownMs: parseIntegerEnv('STARTUP_CATALOG_SYNC_COOLDOWN_MS', '900000', { min: 0, max: 86_400_000 }),
+
   /** Shared secret required for catalog admin ingestion endpoints */
   catalogAdminApiKey: optionalEnv('CATALOG_ADMIN_API_KEY', '').trim(),
 
