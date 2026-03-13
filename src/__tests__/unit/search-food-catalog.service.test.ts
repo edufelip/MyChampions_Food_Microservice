@@ -122,11 +122,11 @@ describe('search-food-catalog.service', () => {
 
     expect(provider.searchByPrefix).toHaveBeenCalledWith(
       expect.objectContaining({
-        normalizedQuery: 'lean ground beef',
+        normalizedQuery: 'carne moida',
       }),
     );
     expect(response.meta).toMatchObject({
-      normalizedQuery: 'lean ground beef',
+      normalizedQuery: 'carne moida',
       rewriteApplied: true,
       rewrittenFrom: 'patinho',
     });
@@ -173,14 +173,14 @@ describe('search-food-catalog.service', () => {
 
     expect(provider.searchByPrefix).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ normalizedQuery: 'lean ground beef' }),
+      expect.objectContaining({ normalizedQuery: 'carne moida' }),
     );
     expect(provider.searchByPrefix).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ normalizedQuery: 'ground beef' }),
+      expect.objectContaining({ normalizedQuery: 'carne bovina magra' }),
     );
     expect(response.total).toBe(1);
-    expect(response.meta.normalizedQuery).toBe('ground beef');
+    expect(response.meta.normalizedQuery).toBe('carne bovina magra');
     expect(getCounter('catalog.empty_response')).toBe(0);
   });
 });

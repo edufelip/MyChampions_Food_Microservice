@@ -11,8 +11,8 @@ interface RewriteCandidatesResult extends RewriteResult {
 }
 
 const PT_QUERY_ALIASES: Record<string, string[]> = {
-  patinho: ['lean ground beef', 'ground beef', 'minced beef', 'beef'],
-  'carne moida': ['ground beef', 'minced beef', 'lean ground beef', 'beef'],
+  patinho: ['carne moida', 'carne bovina magra', 'patinho bovino', 'ground beef', 'lean ground beef', 'beef'],
+  'carne moida': ['carne bovina moida', 'ground beef', 'minced beef', 'lean ground beef', 'beef'],
   bife: ['beef steak', 'steak', 'beef'],
   carne: ['beef', 'meat'],
   peito: ['chicken breast', 'turkey breast'],

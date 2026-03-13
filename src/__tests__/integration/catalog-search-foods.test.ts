@@ -106,7 +106,7 @@ describe('Catalog endpoints', () => {
     expect(res.status).toBe(200);
     expect(mockedSearchFoods).toHaveBeenCalledTimes(1);
     expect(mockedSearchFoods).toHaveBeenCalledWith(
-      'lean ground beef',
+      'carne moida',
       10,
       'US',
       'en',
