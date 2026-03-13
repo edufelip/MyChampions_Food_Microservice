@@ -10,6 +10,7 @@ interface StartupCatalogSyncDeps {
   syncCatalog: () => Promise<unknown>;
   now: () => number;
   enabled: boolean;
+  maxAgeMs: number;
   cooldownMs: number;
 }
 
@@ -52,7 +53,12 @@ export function createStartupCatalogSyncService(
 
       try {
         const health = await deps.provider.getHealth();
-        if (health.ready && health.documentCount > 0) {
+        const lastFreshnessAtMs = health.lastFreshnessAt ? Date.parse(health.lastFreshnessAt) : Number.NaN;
+        const freshnessKnown = Number.isFinite(lastFreshnessAtMs);
+        const ageMs = freshnessKnown ? Math.max(0, now - lastFreshnessAtMs) : Number.POSITIVE_INFINITY;
+        const stale = ageMs > deps.maxAgeMs;
+
+        if (health.ready && health.documentCount > 0 && !stale) {
           shouldSync = false;
           incrementCounter('catalog.startup_sync_skipped_ready');
           logger.info(
@@ -61,8 +67,23 @@ export function createStartupCatalogSyncService(
               indexVersion: health.indexVersion,
               documentCount: health.documentCount,
               lastFreshnessAt: health.lastFreshnessAt,
+              ageMs,
+              maxAgeMs: deps.maxAgeMs,
             },
             'Catalog is ready on startup; skipping sync',
+          );
+        } else if (health.ready && health.documentCount > 0 && stale) {
+          incrementCounter('catalog.startup_sync_trigger_stale');
+          logger.info(
+            {
+              reason,
+              indexVersion: health.indexVersion,
+              documentCount: health.documentCount,
+              lastFreshnessAt: health.lastFreshnessAt,
+              ageMs,
+              maxAgeMs: deps.maxAgeMs,
+            },
+            'Catalog is ready but stale on startup; running sync',
           );
         }
       } catch (error) {
@@ -97,6 +118,7 @@ const defaultStartupCatalogSync = createStartupCatalogSyncService({
   syncCatalog: () => syncFoodCatalog(),
   now: () => Date.now(),
   enabled: config.enableStartupCatalogSync,
+  maxAgeMs: config.catalogMaxAgeDays * 24 * 60 * 60 * 1000,
   cooldownMs: config.startupCatalogSyncCooldownMs,
 });
 

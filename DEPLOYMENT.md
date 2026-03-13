@@ -136,7 +136,8 @@ and then stops the currently active slot.
 | `RATE_LIMIT_MAX` | No | `60` | Max requests per window |
 | `MAX_RESULTS_LIMIT` | No | `50` | Max `maxResults` cap |
 | `ENABLE_CATALOG_INGESTION` | No | `false` | Enables catalog admin ingestion/review endpoints |
-| `ENABLE_STARTUP_CATALOG_SYNC` | No | `true` | Triggers background catalog sync on startup when catalog is empty/unready |
+| `ENABLE_STARTUP_CATALOG_SYNC` | No | `true` | Triggers background catalog sync on startup when catalog is empty/unready/stale |
+| `CATALOG_MAX_AGE_DAYS` | No | `180` | Maximum age before startup forces a re-sync |
 | `STARTUP_CATALOG_SYNC_COOLDOWN_MS` | No | `900000` | Cooldown between startup sync attempts |
 | `CATALOG_ADMIN_API_KEY` | Conditionally | – | Required when `ENABLE_CATALOG_INGESTION=true` |
 | `CATALOG_SYNC_REGION` | No | `US` | Region used during catalog sync |
@@ -144,6 +145,14 @@ and then stops the currently active slot.
 | `CATALOG_SYNC_CONCURRENCY` | No | `5` | Max concurrent FatSecret seed requests during sync |
 | `CATALOG_SYNC_SEED_QUERIES` | No | – | Optional CSV override for default seed list |
 | `CATALOG_STRICT_PT_LOCALIZATION` | No | `true` | Fails catalog sync when Portuguese translation cannot be generated |
+
+### Redis Durability
+
+- `docker-compose.yml` provisions `food-catalog-redis` with:
+  - AOF enabled (`appendonly yes`, `appendfsync everysec`)
+  - RDB snapshots (`save 900 1`, `save 300 10`, `save 60 10000`)
+  - Persistent named volume `food-catalog-redis-data`
+- App slot containers explicitly set `REDIS_URL=redis://food-catalog-redis:6379`.
 
 ### Catalog Seed Defaults
 

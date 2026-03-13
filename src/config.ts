@@ -159,6 +159,9 @@ export const config = {
   /** Auto-sync catalog on startup when health indicates empty/unready */
   enableStartupCatalogSync: parseBooleanEnv('ENABLE_STARTUP_CATALOG_SYNC', true),
 
+  /** Maximum catalog freshness age (days) before triggering startup re-sync */
+  catalogMaxAgeDays: parseIntegerEnv('CATALOG_MAX_AGE_DAYS', '180', { min: 1, max: 3650 }),
+
   /** Cooldown window between startup sync attempts (milliseconds) */
   startupCatalogSyncCooldownMs: parseIntegerEnv('STARTUP_CATALOG_SYNC_COOLDOWN_MS', '900000', { min: 0, max: 86_400_000 }),
 

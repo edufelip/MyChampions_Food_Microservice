@@ -60,4 +60,7 @@ export interface CatalogHealthSnapshot {
   indexVersion: string;
   documentCount: number;
   lastFreshnessAt: string | null;
+  stale?: boolean;
+  maxAgeDays?: number;
+  freshnessAgeDays?: number | null;
 }
