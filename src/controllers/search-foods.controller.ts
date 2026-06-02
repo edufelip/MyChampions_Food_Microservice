@@ -41,11 +41,14 @@ export async function searchFoodsController(
   const { query, maxResults, region, language } = req.body as SearchFoodsBody;
   const uid = res.locals['uid'] as string;
   const useTranslationPipeline =
-    config.enableTranslationPipeline && config.hasGoogleTranslateApiKey;
+    config.enableTranslationPipeline && config.hasTranslationProviderCredentials;
 
   try {
-    if (config.enableTranslationPipeline && !config.hasGoogleTranslateApiKey && !loggedTranslationMisconfiguration) {
-      logger.error('ENABLE_TRANSLATION_PIPELINE=true but GOOGLE_TRANSLATE_API_KEY is missing; falling back to English flow');
+    if (config.enableTranslationPipeline && !config.hasTranslationProviderCredentials && !loggedTranslationMisconfiguration) {
+      logger.error(
+        { provider: config.translationProvider },
+        'ENABLE_TRANSLATION_PIPELINE=true but selected translation provider credentials are missing; falling back to English flow',
+      );
       loggedTranslationMisconfiguration = true;
     }
 

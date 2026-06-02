@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { AxiosError } from 'axios';
 import { GoogleTranslateClient } from '../../translation/google-translate-client';
+import { TranslationProviderConfigurationError } from '../../translation/translator';
 
 jest.mock('axios');
 
@@ -47,5 +48,19 @@ describe('GoogleTranslateClient', () => {
 
     expect(result).toEqual(['Frango']);
     expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws provider-neutral configuration error when Google credentials are missing', async () => {
+    delete process.env['GOOGLE_TRANSLATE_API_KEY'];
+
+    const client = new GoogleTranslateClient();
+
+    await expect(client.translateTexts(['Chicken'], 'pt-BR', 'en')).rejects.toThrow(
+      TranslationProviderConfigurationError,
+    );
+    await expect(client.translateTexts(['Chicken'], 'pt-BR', 'en')).rejects.toThrow(
+      'Translation provider google is missing required credentials',
+    );
+    expect(mockedAxios.post).not.toHaveBeenCalled();
   });
 });

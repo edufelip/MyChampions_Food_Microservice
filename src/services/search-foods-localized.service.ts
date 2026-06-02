@@ -2,7 +2,8 @@ import { searchFoods } from '../fatsecret/search-client';
 import { logger } from '../logger';
 import { FatSecretFoodItem } from '../fatsecret/response-mapper';
 import { isEnglishLanguage, normalizeLanguageCode } from '../translation/language';
-import { GoogleTranslateClient, Translator } from '../translation/google-translate-client';
+import { createTranslator } from '../translation/create-translator';
+import { TranslationProviderConfigurationError, Translator } from '../translation/translator';
 import {
   RedisTranslationCacheRepository,
   TranslationCacheRepository,
@@ -51,12 +52,9 @@ export function createLocalizedFoodSearchService(deps: LocalizedSearchDeps): Loc
     const normalizedTargetLanguage = normalizeLanguageCode(payloadLanguage);
 
     const detectedLanguageRaw = await deps.translator.detectLanguage(query).catch((error: unknown) => {
-      if (
-        error instanceof Error &&
-        error.message.includes('Missing required environment variable: GOOGLE_TRANSLATE_API_KEY')
-      ) {
+      if (error instanceof TranslationProviderConfigurationError) {
         if (!loggedMissingApiKey) {
-          logger.error('Translation pipeline misconfigured: GOOGLE_TRANSLATE_API_KEY is missing');
+          logger.error({ error }, 'Translation pipeline provider is misconfigured');
           loggedMissingApiKey = true;
         }
       } else {
@@ -93,12 +91,9 @@ export function createLocalizedFoodSearchService(deps: LocalizedSearchDeps): Loc
         } catch (error) {
           incrementCounter('translation.query_translate_failure');
           incrementCounter('translation.query_fallback_original');
-          if (
-            error instanceof Error &&
-            error.message.includes('Missing required environment variable: GOOGLE_TRANSLATE_API_KEY')
-          ) {
+          if (error instanceof TranslationProviderConfigurationError) {
             if (!loggedMissingApiKey) {
-              logger.error('Translation pipeline misconfigured: GOOGLE_TRANSLATE_API_KEY is missing');
+              logger.error({ error }, 'Translation pipeline provider is misconfigured');
               loggedMissingApiKey = true;
             }
           } else {
@@ -185,7 +180,7 @@ export function createLocalizedFoodSearchService(deps: LocalizedSearchDeps): Loc
 }
 
 const defaultService = createLocalizedFoodSearchService({
-  translator: new GoogleTranslateClient(),
+  translator: createTranslator(),
   cacheRepository: new RedisTranslationCacheRepository(),
   searchClient: searchFoods,
 });

@@ -2,7 +2,8 @@ import { config } from '../../config';
 import { searchFoods } from '../../fatsecret/search-client';
 import { FatSecretFoodItem } from '../../fatsecret/response-mapper';
 import { logger } from '../../logger';
-import { GoogleTranslateClient, Translator } from '../../translation/google-translate-client';
+import { createTranslator } from '../../translation/create-translator';
+import { Translator } from '../../translation/translator';
 import { CATALOG_LANGUAGES, CatalogLanguage } from '../domain/catalog-language';
 import { CatalogIngestionPort } from '../domain/catalog-ports';
 import { CatalogFoodUpsertDocument } from '../domain/catalog-models';
@@ -181,7 +182,7 @@ export function createSyncFoodCatalogService(deps: SyncFoodCatalogDeps): (reques
 
 const defaultSyncService = createSyncFoodCatalogService({
   searchClient: searchFoods,
-  translator: new GoogleTranslateClient(),
+  translator: createTranslator(),
   ingestion: new RedisCatalogIngestionRepository(),
   nowIso: () => new Date().toISOString(),
 });

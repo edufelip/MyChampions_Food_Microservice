@@ -1,4 +1,5 @@
 import { DEFAULT_CATALOG_SEED_QUERIES } from './catalog/seeds/default-seed-queries';
+import { TranslationProviderConfigurationError } from './translation/translator';
 
 /**
  * Central configuration module – reads environment variables once and
@@ -55,6 +56,16 @@ function parseCsvList(raw: string): string[] {
 
 const MIN_CATALOG_SEED_QUERIES = 50;
 
+export function hasCredentialsForTranslationProvider(provider: string): boolean {
+  if (provider === 'google') {
+    return optionalEnv('GOOGLE_TRANSLATE_API_KEY', '').trim().length > 0;
+  }
+
+  throw new TranslationProviderConfigurationError(`Unsupported translation provider: ${provider}`);
+}
+
+const translationProvider = optionalEnv('TRANSLATION_PROVIDER', 'google');
+
 export const config = {
   /** TCP port the HTTP server listens on */
   port: parseIntegerEnv('PORT', '3000', { min: 1, max: 65535 }),
@@ -104,6 +115,12 @@ export const config = {
 
   /** Feature flag for translation pipeline around food search */
   enableTranslationPipeline: parseBooleanEnv('ENABLE_TRANSLATION_PIPELINE', true),
+
+  /** Translation provider used by the translation pipeline */
+  translationProvider,
+
+  /** Whether the configured translation provider has credentials */
+  hasTranslationProviderCredentials: hasCredentialsForTranslationProvider(translationProvider),
 
   /** Whether Google Translate API key is configured */
   hasGoogleTranslateApiKey: optionalEnv('GOOGLE_TRANSLATE_API_KEY', '').trim().length > 0,

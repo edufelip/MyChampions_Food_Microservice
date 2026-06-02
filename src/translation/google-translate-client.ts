@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import { config } from '../config';
 import { logger } from '../logger';
+import { TranslationProviderConfigurationError, Translator } from './translator';
 
 interface GoogleTranslateDetectionResponse {
   data?: {
@@ -47,16 +48,17 @@ async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export interface Translator {
-  detectLanguage(text: string): Promise<string | null>;
-  translateText(text: string, targetLanguage: string, sourceLanguage?: string): Promise<string>;
-  translateTexts(texts: string[], targetLanguage: string, sourceLanguage?: string): Promise<string[]>;
-}
-
 export class GoogleTranslateClient implements Translator {
   private async postWithRetry<TResponse>(url: string, body: Record<string, unknown>): Promise<TResponse> {
     const maxAttempts = config.translationRetries + 1;
     let lastError: unknown;
+    let apiKey: string;
+
+    try {
+      apiKey = config.googleTranslateApiKey();
+    } catch {
+      throw new TranslationProviderConfigurationError('Translation provider google is missing required credentials');
+    }
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
@@ -64,7 +66,7 @@ export class GoogleTranslateClient implements Translator {
           url,
           body,
           {
-            params: { key: config.googleTranslateApiKey() },
+            params: { key: apiKey },
             timeout: config.translationTimeoutMs,
           },
         );

@@ -3,8 +3,17 @@ import {
   createLocalizedFoodSearchService,
 } from '../../services/search-foods-localized.service';
 import { TranslationCacheRepository } from '../../translation/translation-cache-repository';
-import { Translator } from '../../translation/google-translate-client';
+import { TranslationProviderConfigurationError, Translator } from '../../translation/translator';
 import { getCounter, resetCounters } from '../../metrics';
+import { logger } from '../../logger';
+
+jest.mock('../../logger', () => ({
+  logger: {
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+  },
+}));
 
 describe('searchFoodsLocalized service', () => {
   const foodsInEnglish: FatSecretFoodItem[] = [
@@ -33,6 +42,7 @@ describe('searchFoodsLocalized service', () => {
 
   beforeEach(() => {
     resetCounters();
+    jest.clearAllMocks();
   });
 
   it('translates non-English query to English and localizes names using payload language', async () => {
@@ -106,5 +116,30 @@ describe('searchFoodsLocalized service', () => {
     expect(getCounter('translation.food_cache_hit')).toBe(1);
     expect(getCounter('translation.food_cache_miss')).toBe(1);
     expect(getCounter('translation.food_translate_success')).toBe(1);
+  });
+
+  it('logs provider configuration errors without treating them as ordinary translation failures', async () => {
+    const { translator, cacheRepository, searchClient } = createDeps();
+    const configurationError = new TranslationProviderConfigurationError('Selected translation provider is missing credentials');
+    translator.detectLanguage.mockRejectedValue(configurationError);
+    cacheRepository.getQueryTranslation.mockResolvedValue(null);
+    translator.translateText.mockRejectedValue(configurationError);
+    searchClient.mockResolvedValue([]);
+
+    const service = createLocalizedFoodSearchService({ translator, cacheRepository, searchClient });
+
+    await service('frango', 5, 'BR', 'pt-BR');
+
+    expect(logger.error).toHaveBeenCalledWith(
+      { error: configurationError },
+      'Translation pipeline provider is misconfigured',
+    );
+    expect(logger.warn).not.toHaveBeenCalledWith(
+      { error: configurationError },
+      'Failed to translate query to English; using original query',
+    );
+    expect(searchClient).toHaveBeenCalledWith('frango', 5, 'BR', 'en');
+    expect(getCounter('translation.query_translate_failure')).toBe(1);
+    expect(getCounter('translation.query_fallback_original')).toBe(1);
   });
 });
