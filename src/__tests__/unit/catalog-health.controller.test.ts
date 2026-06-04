@@ -35,8 +35,7 @@ describe('catalog-health.controller', () => {
       RedisCatalogProviderRepository: jest.fn(() => ({})),
     }));
 
-    const { catalogHealthController } =
-      require('../../controllers/catalog-health.controller') as typeof import('../../controllers/catalog-health.controller');
+    const { catalogHealthController } = await import('../../controllers/catalog-health.controller');
 
     const { res, status, json } = createMockRes();
     await catalogHealthController({} as Request, res);
@@ -68,8 +67,7 @@ describe('catalog-health.controller', () => {
       RedisCatalogProviderRepository: jest.fn(() => ({})),
     }));
 
-    const { catalogHealthController } =
-      require('../../controllers/catalog-health.controller') as typeof import('../../controllers/catalog-health.controller');
+    const { catalogHealthController } = await import('../../controllers/catalog-health.controller');
 
     const { res, status, json } = createMockRes();
     await catalogHealthController({} as Request, res);

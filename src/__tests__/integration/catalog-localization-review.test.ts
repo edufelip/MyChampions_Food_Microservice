@@ -12,14 +12,14 @@ describe('POST /catalog/admin/localization/review', () => {
   });
 
   it('returns 401 without auth', async () => {
-    const { createApp } = require('../../server') as typeof import('../../server');
+    const { createApp } = await import('../../server');
     const app = createApp();
     const res = await request(app).post('/catalog/admin/localization/review').send({});
     expect(res.status).toBe(401);
   });
 
   it('returns 400 for invalid body', async () => {
-    const { createApp } = require('../../server') as typeof import('../../server');
+    const { createApp } = await import('../../server');
     const app = createApp();
     const res = await request(app)
       .post('/catalog/admin/localization/review')
@@ -34,7 +34,7 @@ describe('POST /catalog/admin/localization/review', () => {
     process.env.ENABLE_CATALOG_INGESTION = 'true';
     process.env.CATALOG_ADMIN_API_KEY = 'secret';
 
-    const { createApp } = require('../../server') as typeof import('../../server');
+    const { createApp } = await import('../../server');
     const app = createApp();
     const res = await request(app)
       .post('/catalog/admin/localization/review')
@@ -58,7 +58,7 @@ describe('POST /catalog/admin/localization/review', () => {
       })),
     }));
 
-    const { createApp } = require('../../server') as typeof import('../../server');
+    const { createApp } = await import('../../server');
     const app = createApp();
     const res = await request(app)
       .post('/catalog/admin/localization/review')

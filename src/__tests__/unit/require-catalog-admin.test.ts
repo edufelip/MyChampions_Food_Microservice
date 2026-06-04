@@ -28,10 +28,10 @@ describe('requireCatalogAdmin', () => {
     process.env.CATALOG_ADMIN_API_KEY = originalAdminKey;
   });
 
-  it('skips admin key check when ingestion feature is disabled', () => {
+  it('skips admin key check when ingestion feature is disabled', async () => {
     process.env.ENABLE_CATALOG_INGESTION = 'false';
     process.env.CATALOG_ADMIN_API_KEY = '';
-    const { requireCatalogAdmin: middleware } = require('../../middleware/require-catalog-admin') as typeof import('../../middleware/require-catalog-admin');
+    const { requireCatalogAdmin: middleware } = await import('../../middleware/require-catalog-admin');
 
     const req = mockReq();
     const { res } = mockRes();
@@ -39,10 +39,10 @@ describe('requireCatalogAdmin', () => {
     expect(next).toHaveBeenCalled();
   });
 
-  it('returns 403 for missing key when ingestion is enabled', () => {
+  it('returns 403 for missing key when ingestion is enabled', async () => {
     process.env.ENABLE_CATALOG_INGESTION = 'true';
     process.env.CATALOG_ADMIN_API_KEY = 'secret';
-    const { requireCatalogAdmin: middleware } = require('../../middleware/require-catalog-admin') as typeof import('../../middleware/require-catalog-admin');
+    const { requireCatalogAdmin: middleware } = await import('../../middleware/require-catalog-admin');
 
     const req = mockReq();
     const { res, statusFn } = mockRes();

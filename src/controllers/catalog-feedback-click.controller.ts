@@ -9,12 +9,8 @@ export async function catalogFeedbackClickController(req: Request, res: Response
   const { lang, foodId, region } = req.body as CatalogClickBody;
   try {
     await provider.recordClicked({ lang, foodId, region });
-    res.status(200).json({ ok: true });
   } catch (error) {
-    logger.error({ error }, 'Unexpected error while recording catalog click feedback');
-    res.status(500).json({
-      error: 'internal_error',
-      message: 'An unexpected error occurred',
-    });
+    logger.warn({ error }, 'Failed to record clicked catalog item');
   }
+  res.status(200).json({ ok: true });
 }

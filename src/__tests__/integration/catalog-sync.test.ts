@@ -52,9 +52,9 @@ describe('POST /catalog/admin/sync', () => {
     });
     jest.resetModules();
 
-    const { createApp: createEnabledApp } = require('../../server') as typeof import('../../server');
+    const { createApp: createEnabledApp } = await import('../../server');
     const enabledApp = createEnabledApp();
-    const { syncFoodCatalog: syncMockRef } = require('../../catalog/application/sync-food-catalog.service') as typeof import('../../catalog/application/sync-food-catalog.service');
+    const { syncFoodCatalog: syncMockRef } = await import('../../catalog/application/sync-food-catalog.service');
     (syncMockRef as jest.MockedFunction<typeof syncFoodCatalog>).mockResolvedValue({
       seedQueries: ['rice'],
       region: 'US',
