@@ -15,6 +15,7 @@ export interface SearchFoodsBody {
   maxResults: number;
   region: string;
   language: string;
+  page?: number;
 }
 
 export function validateSearchFoodsBody(
@@ -22,7 +23,7 @@ export function validateSearchFoodsBody(
   res: Response,
   next: NextFunction,
 ): void {
-  const { query, maxResults, region, language } = req.body as Partial<SearchFoodsBody>;
+  const { query, maxResults, region, language, page } = req.body as Partial<SearchFoodsBody>;
 
   if (typeof query !== 'string' || query.trim().length === 0) {
     res.status(400).json({
@@ -60,12 +61,24 @@ export function validateSearchFoodsBody(
     return;
   }
 
+  if (
+    page !== undefined &&
+    (typeof page !== 'number' || !Number.isInteger(page) || page < 1)
+  ) {
+    res.status(400).json({
+      error: 'bad_request',
+      message: '`page` must be a positive integer',
+    });
+    return;
+  }
+
   // Sanitise: cap maxResults to configured limit
   req.body = {
     query: query.trim(),
     maxResults: Math.min(maxResults, config.maxResultsLimit),
     region: region.trim(),
     language: language.trim(),
+    page: page ?? 1,
   } satisfies SearchFoodsBody;
 
   next();

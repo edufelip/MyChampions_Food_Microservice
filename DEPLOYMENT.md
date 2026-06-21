@@ -145,14 +145,17 @@ and then stops the currently active slot.
 | `CATALOG_SYNC_CONCURRENCY` | No | `5` | Max concurrent FatSecret seed requests during sync |
 | `CATALOG_SYNC_SEED_QUERIES` | No | – | Optional CSV override for default seed list |
 | `CATALOG_STRICT_PT_LOCALIZATION` | No | `true` | Fails catalog sync when Portuguese translation cannot be generated |
+| `POSTGRES_URL` | No | – | Postgres catalog source used to rebuild Redis when the cache is empty/unready |
+| `CATALOG_POSTGRES_RESTORE_ON_MISS` | No | `true` | Enables Postgres-backed Redis cache recovery when `POSTGRES_URL` is set |
 
-### Redis Durability
+### Catalog Durability
 
 - `docker-compose.yml` provisions `food-catalog-redis` with:
   - AOF enabled (`appendonly yes`, `appendfsync everysec`)
   - RDB snapshots (`save 900 1`, `save 300 10`, `save 60 10000`)
   - Persistent named volume `food-catalog-redis-data`
 - App slot containers explicitly set `REDIS_URL=redis://food-catalog-redis:6379`.
+- Postgres is the persistent catalog source of truth. Keep `POSTGRES_URL` configured and run the catalog Postgres migration after Redis catalog refreshes so Redis can be rebuilt from Postgres when needed.
 
 ### Catalog Seed Defaults
 

@@ -12,9 +12,9 @@ jest.mock('../../auth/firebase-auth', () => ({
   verifyIdToken: jest.fn().mockResolvedValue({ uid: 'test-user-123' }),
 }));
 
-// Mock localized search service
-jest.mock('../../services/search-foods-localized.service', () => ({
-  searchFoodsLocalized: jest.fn(),
+// Mock unified search service
+jest.mock('../../services/unified-search.service', () => ({
+  unifiedSearchFoods: jest.fn(),
 }));
 
 // Keep FatSecretError class contract for controller error mapping
@@ -32,11 +32,10 @@ jest.mock('../../fatsecret/search-client', () => ({
   },
 }));
 
-import { searchFoodsLocalized } from '../../services/search-foods-localized.service';
-import { searchFoods, FatSecretError } from '../../fatsecret/search-client';
+import { unifiedSearchFoods } from '../../services/unified-search.service';
+import { FatSecretError } from '../../fatsecret/search-client';
 
-const mockedSearchFoodsLocalized = searchFoodsLocalized as jest.MockedFunction<typeof searchFoodsLocalized>;
-const mockedSearchFoods = searchFoods as jest.MockedFunction<typeof searchFoods>;
+const mockedUnifiedSearchFoods = unifiedSearchFoods as jest.MockedFunction<typeof unifiedSearchFoods>;
 
 const VALID_AUTH = 'Bearer valid-firebase-token';
 const VALID_BODY = { query: 'chicken', maxResults: 10, region: 'US', language: 'en' };
@@ -54,13 +53,11 @@ describe('POST /searchFoods', () => {
   });
 
   function mockSearchResolved(results: unknown): void {
-    mockedSearchFoodsLocalized.mockResolvedValue(results as never);
-    mockedSearchFoods.mockResolvedValue(results as never);
+    mockedUnifiedSearchFoods.mockResolvedValue({ results } as never);
   }
 
   function mockSearchRejected(error: unknown): void {
-    mockedSearchFoodsLocalized.mockRejectedValue(error);
-    mockedSearchFoods.mockRejectedValue(error);
+    mockedUnifiedSearchFoods.mockRejectedValue(error);
   }
 
   describe('Happy path', () => {

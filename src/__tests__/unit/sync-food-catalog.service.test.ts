@@ -33,7 +33,7 @@ describe('sync-food-catalog.service', () => {
     const service = createSyncFoodCatalogService({
       searchClient,
       translator,
-      ingestion: { upsertFoods, rebuildIndexes },
+      ingestion: { upsertFoods, rebuildIndexes, appendToIndexes: jest.fn() },
       nowIso: () => '2026-03-11T00:00:00.000Z',
     });
 
@@ -83,7 +83,7 @@ describe('sync-food-catalog.service', () => {
     const service = createSyncFoodCatalogService({
       searchClient,
       translator,
-      ingestion: { upsertFoods, rebuildIndexes },
+      ingestion: { upsertFoods, rebuildIndexes, appendToIndexes: jest.fn() },
       nowIso: () => '2026-03-11T00:00:00.000Z',
     });
 
@@ -127,7 +127,7 @@ describe('sync-food-catalog.service', () => {
     const service = createSyncFoodCatalogService({
       searchClient,
       translator,
-      ingestion: { upsertFoods, rebuildIndexes },
+      ingestion: { upsertFoods, rebuildIndexes, appendToIndexes: jest.fn() },
       nowIso: () => '2026-03-11T00:00:00.000Z',
     });
 

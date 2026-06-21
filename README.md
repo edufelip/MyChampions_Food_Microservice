@@ -24,7 +24,7 @@ A production-ready Node.js microservice that powers food search and a multilingu
 The Food Microservice serves two main functions:
 
 1. **Live FatSecret food search** — Authenticated users query food items in real time. The service forwards the request to FatSecret, caches translation results in Redis, and returns results in the user's language.
-2. **Multilingual Redis food catalog** — A pre-built, language-aware catalog of foods is ingested from FatSecret, translated, and stored in Redis. Catalog searches are served entirely from Redis without hitting FatSecret on every request, enabling fast, offline-resilient lookups.
+2. **Multilingual food catalog** — A pre-built, language-aware catalog of foods is ingested from FatSecret, translated, persisted to Postgres, and served from Redis as the hot cache. If Redis is empty or unready and `POSTGRES_URL` is configured, the service rebuilds the Redis catalog from Postgres before serving catalog search.
 
 This service is the nutrition data backbone of the MyChampions app and communicates with the mobile client exclusively via Firebase-authenticated HTTPS requests.
 
@@ -73,7 +73,7 @@ MyChampions Mobile App
 | HTTP server | Express 4 | Request routing, middleware, rate limiting |
 | Authentication | Firebase Admin SDK | Verify Firebase ID tokens on protected routes |
 | Food data | FatSecret REST API (OAuth2) | Live food search data source |
-| Caching & catalog | Redis via ioredis | Translation cache + pre-built food catalog |
+| Caching & catalog | Redis via ioredis + Postgres | Redis serves hot catalog/search data; Postgres is the persistent recovery source |
 | Translation | Google Translate API v2 | Multilingual query + catalog localization |
 | Logging | pino / pino-pretty | Structured JSON logging |
 | Metrics | Built-in `/metrics` endpoint | Request counts, latency, error rates |
@@ -306,6 +306,8 @@ See `.env.example` for the full list with inline documentation. The critical var
 | `RATE_LIMIT_MAX` | `60` | Max requests per IP per window. |
 | `MAX_RESULTS_LIMIT` | `50` | Server-side cap on `maxResults`. |
 | `CATALOG_MAX_AGE_DAYS` | `180` | Catalog freshness threshold. Sync runs if catalog is older than this. |
+| `POSTGRES_URL` | _(unset)_ | Postgres catalog source used to restore Redis when the Redis catalog is empty/unready. |
+| `CATALOG_POSTGRES_RESTORE_ON_MISS` | `true` | Enables Postgres-backed Redis restore when `POSTGRES_URL` is set. |
 | `QUERY_TRANSLATION_CACHE_TTL_SECONDS` | `2592000` | TTL for cached query translations in Redis (30 days). |
 
 ---
@@ -424,9 +426,9 @@ ENABLE_CATALOG_INGESTION=true
 
 in your environment, then trigger a sync via `POST /catalog/admin/sync` with the admin API key.
 
-### Redis Persistence
+### Catalog Persistence
 
-The food catalog is stored in Redis. Ensure Redis is configured with persistence (`appendonly yes` or RDB snapshots) in production so the catalog survives Redis restarts. Without persistence, the catalog must be re-synced after every Redis restart.
+The food catalog is served from Redis for low latency, but Postgres should be treated as the persistent source of truth. Keep the periodic Redis-to-Postgres catalog migration running after catalog refreshes. With `POSTGRES_URL` set, the service can rebuild Redis catalog keys from Postgres when Redis is empty or unready.
 
 ### Token Caching
 

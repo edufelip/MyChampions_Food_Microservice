@@ -19,6 +19,15 @@ function optionalEnv(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
 
+function optionalNullableEnv(name: string): string | null {
+  const raw = process.env[name];
+  if (!raw) {
+    return null;
+  }
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function parseBooleanEnv(name: string, fallback: boolean): boolean {
   const raw = optionalEnv(name, String(fallback)).trim().toLowerCase();
   if (raw === 'true' || raw === '1' || raw === 'yes') return true;
@@ -145,6 +154,12 @@ export const config = {
 
   /** Redis URL used for translation cache storage */
   redisUrl: optionalEnv('REDIS_URL', ''),
+
+  /** Postgres catalog source used to restore Redis cache on cache miss */
+  postgresUrl: optionalNullableEnv('POSTGRES_URL'),
+
+  /** Restore Redis catalog from Postgres when Redis has no usable catalog */
+  catalogPostgresRestoreOnMiss: parseBooleanEnv('CATALOG_POSTGRES_RESTORE_ON_MISS', true),
 
   /** Query translation cache TTL (seconds) */
   queryTranslationCacheTtlSeconds: parseIntegerEnv('QUERY_TRANSLATION_CACHE_TTL_SECONDS', '2592000', { min: 60 }),

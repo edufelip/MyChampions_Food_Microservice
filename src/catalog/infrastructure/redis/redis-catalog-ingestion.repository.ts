@@ -136,6 +136,37 @@ export class RedisCatalogIngestionRepository implements CatalogIngestionPort, Lo
     await this.refreshStats();
   }
 
+  async appendToIndexes(items: CatalogFoodUpsertDocument[], langs: CatalogLanguage[]): Promise<void> {
+    const client = getRedisClient();
+    if (!client || items.length === 0) return;
+
+    const generation = await this.getActiveGeneration();
+    const pipeline = client.pipeline();
+
+    items.forEach((item) => {
+      langs.forEach((lang) => {
+        const localizedName = item.localized?.[lang]?.name ?? item.localized?.['en']?.name;
+        if (!localizedName) return;
+        const tokens = tokenizeName(localizedName);
+        tokens.forEach((token) => {
+          pipeline.sadd(catalogLanguageTokenSetKey(lang, generation), token);
+          tokenPrefixes(token).forEach((prefix) => {
+            pipeline.zadd(catalogFoodIndexKey(lang, prefix, generation), 1, item.id);
+          });
+          buildTokenSynonyms(token).forEach((synonym) => {
+            pipeline.sadd(catalogFoodSynonymKey(lang, synonym, generation), token);
+          });
+        });
+        pipeline.zadd(catalogFoodPopularityKey(lang, item.region ?? 'GLOBAL', generation), 0, item.id);
+      });
+    });
+
+    const result = await pipeline.exec();
+    if (result?.some(([error]) => error)) {
+      throw new Error('Failed to append to catalog indexes');
+    }
+  }
+
   async rebuildIndexes(langs: CatalogLanguage[]): Promise<void> {
     const client = getRedisClient();
     if (!client) return;

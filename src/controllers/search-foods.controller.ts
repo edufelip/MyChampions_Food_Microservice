@@ -12,13 +12,10 @@
  *   successful HTTP response. Returning HTTP 200 preserves that contract.
  */
 import { Request, Response } from 'express';
-import { searchFoods, FatSecretError } from '../fatsecret/search-client';
+import { FatSecretError } from '../fatsecret/search-client';
 import { logger } from '../logger';
 import { SearchFoodsBody } from '../middleware/request-validator';
-import { searchFoodsLocalized } from '../services/search-foods-localized.service';
-import { config } from '../config';
-
-let loggedTranslationMisconfiguration = false;
+import { unifiedSearchFoods } from '../services/unified-search.service';
 
 function serializeError(err: unknown): Record<string, unknown> {
   if (err instanceof FatSecretError) {
@@ -38,24 +35,12 @@ export async function searchFoodsController(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const { query, maxResults, region, language } = req.body as SearchFoodsBody;
+  const { query, maxResults, region, language, page } = req.body as SearchFoodsBody;
   const uid = res.locals['uid'] as string;
-  const useTranslationPipeline =
-    config.enableTranslationPipeline && config.hasTranslationProviderCredentials;
 
   try {
-    if (config.enableTranslationPipeline && !config.hasTranslationProviderCredentials && !loggedTranslationMisconfiguration) {
-      logger.error(
-        { provider: config.translationProvider },
-        'ENABLE_TRANSLATION_PIPELINE=true but selected translation provider credentials are missing; falling back to English flow',
-      );
-      loggedTranslationMisconfiguration = true;
-    }
-
-    const results = useTranslationPipeline
-      ? await searchFoodsLocalized(query, maxResults, region, language)
-      : await searchFoods(query, maxResults, region, language);
-    res.status(200).json({ results });
+    const response = await unifiedSearchFoods(query, maxResults, region, language, page);
+    res.status(200).json(response);
   } catch (err) {
     if (err instanceof FatSecretError) {
       if (err.fatSecretCode === 'quota_exceeded') {

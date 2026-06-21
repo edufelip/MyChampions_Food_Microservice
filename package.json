@@ -13,7 +13,11 @@
     "test:contract": "jest --testPathPattern='src/__tests__/contract' --forceExit",
     "lint": "eslint 'src/**/*.ts'",
     "lint:fix": "eslint 'src/**/*.ts' --fix",
-    "catalog:shadow-validate": "node infra/scripts/catalog-shadow-validate.js"
+    "catalog:shadow-validate": "node infra/scripts/catalog-shadow-validate.js",
+    "migrate:catalog:postgres": "node dist/catalog/infrastructure/postgres/migrate-redis-catalog-to-postgres.js",
+    "migrate:catalog:postgres:dev": "ts-node src/catalog/infrastructure/postgres/migrate-redis-catalog-to-postgres.ts",
+    "rebuild:catalog:redis": "node dist/catalog/infrastructure/postgres/rebuild-redis-catalog-from-postgres.js",
+    "rebuild:catalog:redis:dev": "ts-node src/catalog/infrastructure/postgres/rebuild-redis-catalog-from-postgres.ts"
   },
   "dependencies": {
     "axios": "^1.13.6",
@@ -22,6 +26,7 @@
     "express-rate-limit": "^7.4.1",
     "firebase-admin": "^12.6.0",
     "ioredis": "^5.10.0",
+    "pg": "^8.22.0",
     "pino": "^9.5.0",
     "pino-pretty": "^11.3.0",
     "qs": "^6.13.0"
@@ -30,6 +35,7 @@
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.13",
     "@types/node": "^20.16.10",
+    "@types/pg": "^8.20.0",
     "@types/qs": "^6.9.16",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^8.7.0",

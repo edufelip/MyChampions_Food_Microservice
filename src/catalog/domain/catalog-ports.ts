@@ -31,6 +31,7 @@ export interface CatalogProviderPort {
 export interface CatalogIngestionPort {
   upsertFoods(items: CatalogFoodUpsertDocument[]): Promise<void>;
   rebuildIndexes(langs: CatalogLanguage[]): Promise<void>;
+  appendToIndexes(items: CatalogFoodUpsertDocument[], langs: CatalogLanguage[]): Promise<void>;
 }
 
 export interface LocalizationPort {

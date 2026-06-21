@@ -104,6 +104,7 @@ describe('validateSearchFoodsBody middleware', () => {
       maxResults: 10,
       region: 'US',
       language: 'en',
+      page: 1,
     });
   });
 
