@@ -11,7 +11,7 @@
 **Then** the response is HTTP 200 with `{ results: [] }`
 
 ## AC-207.3 – Unauthenticated request
-**Given** a request with a missing or invalid Firebase ID token  
+**Given** a request with a missing, invalid, revoked, or deleted MyChampions access token
 **When** the request reaches the Food Microservice  
 **Then** the response is HTTP 401 with `{ error: "unauthenticated" }`
 

@@ -18,7 +18,7 @@ export function getRedisClient(): Redis | null {
   const client = new Redis(config.redisUrl, {
     maxRetriesPerRequest: 1,
     lazyConnect: true,
-    enableOfflineQueue: false,
+    enableOfflineQueue: true,
   });
 
   client.on('error', (error: unknown) => {

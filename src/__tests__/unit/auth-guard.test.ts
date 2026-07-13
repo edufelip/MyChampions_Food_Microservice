@@ -4,13 +4,25 @@
 import { Request, Response, NextFunction } from 'express';
 import { authGuard } from '../../middleware/auth-guard';
 
-// Mock Firebase auth module
-jest.mock('../../auth/firebase-auth', () => ({
-  verifyIdToken: jest.fn(),
-}));
+jest.mock('../../auth/mychampions-auth', () => {
+  class MyChampionsAuthError extends Error {
+    constructor(public readonly code: 'unauthenticated' | 'unavailable') {
+      super(code);
+    }
+  }
+  return {
+    MyChampionsAuthError,
+    verifyMyChampionsAccessToken: jest.fn(),
+  };
+});
 
-import { verifyIdToken } from '../../auth/firebase-auth';
-const mockedVerify = verifyIdToken as jest.MockedFunction<typeof verifyIdToken>;
+import {
+  MyChampionsAuthError,
+  verifyMyChampionsAccessToken,
+} from '../../auth/mychampions-auth';
+const mockedVerify = verifyMyChampionsAccessToken as jest.MockedFunction<
+  typeof verifyMyChampionsAccessToken
+>;
 
 function mockReq(authHeader?: string): Partial<Request> {
   return {
@@ -59,8 +71,8 @@ describe('authGuard middleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('returns 401 when token verification fails', async () => {
-    mockedVerify.mockRejectedValue(new Error('Invalid token'));
+  it('returns 401 when root auth rejects the token', async () => {
+    mockedVerify.mockRejectedValue(new MyChampionsAuthError('unauthenticated', 'rejected'));
     const req = mockReq('Bearer bad-token');
     const { res, statusFn, jsonFn } = mockRes();
 
@@ -73,8 +85,8 @@ describe('authGuard middleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('calls next and sets uid when token is valid', async () => {
-    mockedVerify.mockResolvedValue({ uid: 'user-123' } as never);
+  it('calls next and sets uid when root auth accepts the token', async () => {
+    mockedVerify.mockResolvedValue({ uid: 'user-123' });
     const req = mockReq('Bearer valid-token');
     const { res } = mockRes();
     res.locals = {};
@@ -83,5 +95,19 @@ describe('authGuard middleware', () => {
 
     expect(next).toHaveBeenCalled();
     expect(res.locals?.['uid']).toBe('user-123');
+  });
+
+  it('returns 503 when root auth is unavailable', async () => {
+    mockedVerify.mockRejectedValue(new MyChampionsAuthError('unavailable', 'unavailable'));
+    const req = mockReq('Bearer valid-token');
+    const { res, statusFn, jsonFn } = mockRes();
+
+    await authGuard(req as Request, res as Response, next);
+
+    expect(statusFn).toHaveBeenCalledWith(503);
+    expect(jsonFn).toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'auth_unavailable' }),
+    );
+    expect(next).not.toHaveBeenCalled();
   });
 });

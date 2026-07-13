@@ -41,6 +41,10 @@ services:
       - "300 10"
       - --save
       - "60 10000"
+      - --maxmemory
+      - "256mb"
+      - --maxmemory-policy
+      - "allkeys-lru"
     volumes:
       - food-catalog-redis-data:/data
     healthcheck:

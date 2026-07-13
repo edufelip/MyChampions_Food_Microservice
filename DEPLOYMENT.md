@@ -18,7 +18,7 @@ be touched during food-service deployments.
 4. FatSecret allowlist includes `<VPS_STATIC_IP>`
 5. DNS `foodservice.eduwaldo.com` points to `<VPS_STATIC_IP>`
 6. GitHub secret `FOODSERVICE_ENV_FILE` populated with full `.env` content, including:
-   - `FIREBASE_SERVICE_ACCOUNT_JSON`
+   - `MYCHAMPIONS_AUTH_SERVER_URL`
    - `FATSECRET_CLIENT_ID`
    - `FATSECRET_CLIENT_SECRET`
 
@@ -124,7 +124,7 @@ and then stops the currently active slot.
 | `NODE_ENV` | No | `production` | Node environment |
 | `LOG_LEVEL` | No | `info` | Pino log level |
 | `TRUST_PROXY_HOPS` | No | `1` | Trusted proxy hops |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | **Yes** | – | Firebase service account |
+| `MYCHAMPIONS_AUTH_SERVER_URL` | **Yes** | – | Internal HTTPS base URL for the root MyChampions Bun server |
 | `FATSECRET_CLIENT_ID` | **Yes** | – | FatSecret OAuth2 client ID |
 | `FATSECRET_CLIENT_SECRET` | **Yes** | – | FatSecret OAuth2 client secret |
 | `FATSECRET_API_URL` | No | FatSecret default | API endpoint override |

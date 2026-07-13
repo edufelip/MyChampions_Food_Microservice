@@ -15,7 +15,7 @@
 **Input:** `POST /searchFoods` with no Authorization header  
 **Expected:** HTTP 401, `{ error: "unauthenticated" }`
 
-## TC-207.4 – Invalid Firebase token
+## TC-207.4 – Invalid MyChampions access token
 **Type:** Unit  
 **Input:** `POST /searchFoods` with `Authorization: Bearer invalid-token`  
 **Expected:** HTTP 401, `{ error: "unauthenticated" }`
@@ -66,7 +66,7 @@
 
 ```bash
 BASE_URL="https://foodservice.eduwaldo.com"  # Replace with actual VPS URL
-TOKEN="<Firebase-ID-token>"              # Replace with valid token
+TOKEN="<mychampions-access-token>"       # Replace with a root-server session token
 
 # TC-207.1 – Happy path
 curl -s -X POST "$BASE_URL/searchFoods" \

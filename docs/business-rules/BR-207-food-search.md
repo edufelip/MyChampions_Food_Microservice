@@ -1,8 +1,9 @@
 # BR-207 – Business Rules: Food Search
 
 ## BR-207.1 – Authentication required
-Every food search request must carry a valid Firebase ID token. The service
-never calls FatSecret on behalf of unauthenticated users.
+Every food search request must carry a valid MyChampions server access token.
+The root server never returns catalog data to an unauthenticated user, and the
+food service fails closed when the root auth authority cannot validate a token.
 
 ## BR-207.2 – FatSecret credentials never exposed
 The FatSecret client ID and client secret are stored as environment variables

@@ -1,15 +1,19 @@
 /**
  * Integration tests – POST /searchFoods with mocked FatSecret responses.
  *
- * The Firebase auth module and FatSecret search client are mocked so tests
+ * The MyChampions auth module and FatSecret search client are mocked so tests
  * run without external dependencies.
  */
 import request from 'supertest';
 import { createApp } from '../../server';
 
-// Mock Firebase auth
-jest.mock('../../auth/firebase-auth', () => ({
-  verifyIdToken: jest.fn().mockResolvedValue({ uid: 'test-user-123' }),
+jest.mock('../../auth/mychampions-auth', () => ({
+  MyChampionsAuthError: class MyChampionsAuthError extends Error {
+    constructor(public readonly code: 'unauthenticated' | 'unavailable', message = code) {
+      super(message);
+    }
+  },
+  verifyMyChampionsAccessToken: jest.fn().mockResolvedValue({ uid: 'test-user-123' }),
 }));
 
 // Mock unified search service
@@ -37,7 +41,7 @@ import { FatSecretError } from '../../fatsecret/search-client';
 
 const mockedUnifiedSearchFoods = unifiedSearchFoods as jest.MockedFunction<typeof unifiedSearchFoods>;
 
-const VALID_AUTH = 'Bearer valid-firebase-token';
+const VALID_AUTH = 'Bearer valid-mychampions-token';
 const VALID_BODY = { query: 'chicken', maxResults: 10, region: 'US', language: 'en' };
 
 const MOCK_FOOD_ITEMS = [
@@ -99,10 +103,16 @@ describe('POST /searchFoods', () => {
     });
 
     it('returns 401 when token is invalid', async () => {
-      const { verifyIdToken } = jest.requireMock('../../auth/firebase-auth') as {
-        verifyIdToken: jest.Mock;
+      const { MyChampionsAuthError, verifyMyChampionsAccessToken } = jest.requireMock('../../auth/mychampions-auth') as {
+        MyChampionsAuthError: new (
+          code: 'unauthenticated' | 'unavailable',
+          message?: string,
+        ) => Error;
+        verifyMyChampionsAccessToken: jest.Mock;
       };
-      verifyIdToken.mockRejectedValueOnce(new Error('Invalid token'));
+      verifyMyChampionsAccessToken.mockRejectedValueOnce(
+        new MyChampionsAuthError('unauthenticated', 'Invalid token'),
+      );
 
       const res = await request(app)
         .post('/searchFoods')

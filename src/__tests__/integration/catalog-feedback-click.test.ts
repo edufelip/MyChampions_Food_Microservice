@@ -1,13 +1,14 @@
 import request from 'supertest';
 import { createApp } from '../../server';
 
-jest.mock('../../auth/firebase-auth', () => ({
-  verifyIdToken: jest.fn().mockResolvedValue({ uid: 'test-user-123' }),
+jest.mock('../../auth/mychampions-auth', () => ({
+  MyChampionsAuthError: class MyChampionsAuthError extends Error {},
+  verifyMyChampionsAccessToken: jest.fn().mockResolvedValue({ uid: 'test-user-123' }),
 }));
 
 describe('POST /catalog/feedback/click', () => {
   const app = createApp();
-  const VALID_AUTH = 'Bearer valid-firebase-token';
+  const VALID_AUTH = 'Bearer valid-mychampions-token';
 
   it('returns 401 without auth', async () => {
     const res = await request(app).post('/catalog/feedback/click').send({ lang: 'en', foodId: '1' });
