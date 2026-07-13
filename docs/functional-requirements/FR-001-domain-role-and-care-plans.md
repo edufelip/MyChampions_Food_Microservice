@@ -26,24 +26,24 @@ items sourced from the FatSecret database via the Food Microservice
 
 ## FR-243 – Food Search Integration (VPS Proxy)
 
-> **Status:** Active – implemented via VPS-hosted microservice  
-> **Replaces:** Firebase Cloud Function proxy (deprecated due to IP restriction)
+> **Status:** Active – implemented through the root MyChampions Bun server and local catalog Postgres
 
-The FatSecret food search is performed by a dedicated Node.js microservice
-deployed on the VPS at `<VPS_STATIC_IP>`. The microservice:
+The mobile food search is performed by the root MyChampions server against the
+local mirrored catalog Postgres database. The food microservice remains the
+catalog/FatSecret worker. The root server:
 
-1. Validates Firebase ID tokens issued by the app's Firebase project.
-2. Calls the FatSecret `foods.search` API using OAuth2 client credentials.
-3. Returns `{ results: FatSecretFoodItem[] }` to the mobile client.
+1. Validates the MyChampions bearer session.
+2. Searches the mirrored catalog database.
+3. Returns normalized food results to the mobile client.
 
 **Client contract (unchanged):**
 
 | Field | Value |
 |-------|-------|
 | Method | `POST` |
-| URL | `EXPO_PUBLIC_FOOD_SEARCH_FUNCTION_URL` (now points to VPS) |
-| Headers | `Content-Type: application/json`, `Authorization: Bearer <Firebase ID token>` |
-| Body | `{ query: string, maxResults: number }` |
+| URL | `EXPO_PUBLIC_MYCHAMPIONS_SERVER_URL/integrations/food/search` |
+| Headers | `Content-Type: application/json`, `Authorization: Bearer <MyChampions access token>` |
+| Body | `{ query: string, maxResults: number, region: string, language: string }` |
 | Success | HTTP 200, `{ results: [...] }` |
 | Auth failure | HTTP 401 |
 | Quota | HTTP 200, `{ error: "quota_exceeded" }` |

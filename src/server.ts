@@ -62,8 +62,8 @@ export function createApp(): express.Application {
 
   /**
    * POST /searchFoods
-   * Compatible with the current mobile client contract:
-   *   Authorization: Bearer <Firebase ID token>
+   * Available for internal/operator clients with a MyChampions bearer session:
+   *   Authorization: Bearer <MyChampions access token>
    *   { query: string, maxResults: number, region: string, language: string }
    */
   app.post(

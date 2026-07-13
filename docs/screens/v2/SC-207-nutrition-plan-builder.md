@@ -7,7 +7,7 @@ for food items and build a structured nutrition plan for an athlete.
 
 **Screen ID:** SC-207  
 **Version:** v2  
-**Status:** Active – food search now served by VPS microservice (DR-005)
+**Status:** Active – food search served by the root MyChampions server
 
 ---
 
@@ -22,18 +22,19 @@ for food items and build a structured nutrition plan for an athlete.
 
 ## Data Source – Food Search
 
-Food item search is powered by the FatSecret API, accessed through the
-**MyChampions Food Microservice** (VPS-hosted, not Firebase Cloud Function).
+Food item search is served by the root **MyChampions Bun server**, which reads
+the mirrored food catalog Postgres database. The Food Microservice remains the
+catalog/FatSecret worker behind that server-owned boundary.
 
 ### Integration contract
 
 | Property | Value |
 |----------|-------|
 | Source module | `features/nutrition/food-search-source.ts` |
-| Endpoint env var | `EXPO_PUBLIC_FOOD_SEARCH_FUNCTION_URL` |
-| Method | `POST /searchFoods` |
-| Auth | `Authorization: Bearer <Firebase ID token>` |
-| Request body | `{ query: string, maxResults: number }` |
+| Endpoint env var | `EXPO_PUBLIC_MYCHAMPIONS_SERVER_URL` |
+| Method | `POST /integrations/food/search` |
+| Auth | `Authorization: Bearer <MyChampions access token>` |
+| Request body | `{ query: string, maxResults: number, region: string, language: string }` |
 | Success response | `{ results: FatSecretFoodItem[] }` |
 | Empty results | `{ results: [] }` – valid, show "No results found" |
 | Auth error | HTTP 401 – trigger re-auth flow |
@@ -43,12 +44,11 @@ Food item search is powered by the FatSecret API, accessed through the
 ### Deployment path
 
 ```
-Mobile App → HTTPS → foodservice.eduwaldo.com (Nginx on VPS)
-                          → Docker container → FatSecret API
+Mobile App → HTTPS → MyChampions Bun server → local catalog Postgres
 ```
 
-The VPS fixed IP (`<VPS_STATIC_IP>`) is allowlisted in FatSecret to resolve the
-dynamic-IP blocking that affected the Firebase Cloud Function proxy.
+The catalog worker's VPS fixed IP (`<VPS_STATIC_IP>`) is allowlisted in
+FatSecret for catalog refreshes and live provider operations.
 
 ---
 
@@ -73,4 +73,4 @@ dynamic-IP blocking that affected the Firebase Cloud Function proxy.
 
 | Date | Change |
 |------|--------|
-| 2026-03 | Updated integration source from Firebase proxy to VPS microservice (DR-005). Quota behavior kept client-compatible as HTTP 200 + `{ error: "quota_exceeded" }`. |
+| 2026-07 | Mobile integration moved to the root MyChampions server; catalog worker remains provider-facing. Quota behavior stays client-compatible as HTTP 200 + `{ error: "quota_exceeded" }`. |

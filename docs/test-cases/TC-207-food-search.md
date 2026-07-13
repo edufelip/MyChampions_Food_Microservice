@@ -15,7 +15,7 @@
 **Input:** `POST /searchFoods` with no Authorization header  
 **Expected:** HTTP 401, `{ error: "unauthenticated" }`
 
-## TC-207.4 – Invalid Firebase token
+## TC-207.4 – Invalid MyChampions access token
 **Type:** Unit  
 **Input:** `POST /searchFoods` with `Authorization: Bearer invalid-token`  
 **Expected:** HTTP 401, `{ error: "unauthenticated" }`
@@ -24,6 +24,11 @@
 **Type:** Unit  
 **Input:** `POST /searchFoods` with valid auth and `{ maxResults: 10 }` (no query)  
 **Expected:** HTTP 400, `{ error: "bad_request" }`
+
+## TC-207.5a – Root auth route unavailable
+**Type:** Unit
+**Input:** The configured root auth server returns HTTP 404 for `GET /me`
+**Expected:** HTTP 503, `{ error: "auth_unavailable" }`
 
 ## TC-207.6 – Invalid maxResults
 **Type:** Unit  
@@ -66,7 +71,7 @@
 
 ```bash
 BASE_URL="https://foodservice.eduwaldo.com"  # Replace with actual VPS URL
-TOKEN="<Firebase-ID-token>"              # Replace with valid token
+TOKEN="<mychampions-access-token>"       # Replace with a root-server session token
 
 # TC-207.1 – Happy path
 curl -s -X POST "$BASE_URL/searchFoods" \

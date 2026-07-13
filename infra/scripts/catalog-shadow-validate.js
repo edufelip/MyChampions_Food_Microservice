@@ -5,7 +5,7 @@ Compares legacy /searchFoods results against /catalog/searchFoods for query/lang
 
 Required env:
 - BASE_URL          e.g. https://foodservice.eduwaldo.com
-- AUTH_TOKEN        Firebase ID token
+- AUTH_TOKEN        MyChampions server bearer access token
 
 Optional env:
 - REGION            default US

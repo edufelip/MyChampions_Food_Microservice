@@ -1,11 +1,12 @@
 import request from 'supertest';
 
-jest.mock('../../auth/firebase-auth', () => ({
-  verifyIdToken: jest.fn().mockResolvedValue({ uid: 'test-user-123' }),
+jest.mock('../../auth/mychampions-auth', () => ({
+  MyChampionsAuthError: class MyChampionsAuthError extends Error {},
+  verifyMyChampionsAccessToken: jest.fn().mockResolvedValue({ uid: 'test-user-123' }),
 }));
 
 describe('POST /catalog/admin/localization/review', () => {
-  const VALID_AUTH = 'Bearer valid-firebase-token';
+  const VALID_AUTH = 'Bearer valid-mychampions-token';
 
   afterEach(() => {
     jest.resetModules();

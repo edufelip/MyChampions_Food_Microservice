@@ -1,6 +1,6 @@
 # MyChampions Food Microservice
 
-A production-ready Node.js microservice that powers food search and a multilingual food catalog for the **MyChampions** fitness app. It proxies the [FatSecret REST API](https://platform.fatsecret.com/api/), caches and translates results via Redis and Google Translate, and authenticates every request through Firebase Auth.
+A production-ready Node.js microservice that powers catalog ingestion, live FatSecret search, and multilingual food data for the **MyChampions** fitness app. It proxies the [FatSecret REST API](https://platform.fatsecret.com/api/), caches and translates results via Redis and Google Translate, and validates protected requests through the root MyChampions server.
 
 ---
 
@@ -26,16 +26,16 @@ The Food Microservice serves two main functions:
 1. **Live FatSecret food search** — Authenticated users query food items in real time. The service forwards the request to FatSecret, caches translation results in Redis, and returns results in the user's language.
 2. **Multilingual food catalog** — A pre-built, language-aware catalog of foods is ingested from FatSecret, translated, persisted to Postgres, and served from Redis as the hot cache. If Redis is empty or unready and `POSTGRES_URL` is configured, the service rebuilds the Redis catalog from Postgres before serving catalog search.
 
-This service is the nutrition data backbone of the MyChampions app and communicates with the mobile client exclusively via Firebase-authenticated HTTPS requests.
+Mobile food search is served through the root Bun/Elysia server's authenticated `/integrations/food/search` route. This service remains available for protected catalog and operator workflows and validates the same MyChampions bearer sessions through the root server.
 
 ---
 
 ## Architecture
 
 ```
-MyChampions Mobile App
+Protected catalog/operator client
         |
-        | Firebase ID Token (Authorization: Bearer <token>)
+        | MyChampions access token (Authorization: Bearer <token>)
         v
 ┌─────────────────────────────────────────────────────┐
 │              Express HTTP Server (Node.js)           │
@@ -61,7 +61,7 @@ MyChampions Mobile App
 │  └──────────────────────────────────────────────┘  │
 │                                                     │
 │  ┌──────────────────────────────────────────────┐  │
-│  │        Firebase Admin SDK (Auth)             │  │
+│  │   Root MyChampions server GET /me (Auth)      │  │
 │  └──────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────┘
 ```
@@ -71,7 +71,7 @@ MyChampions Mobile App
 | Component | Library / Service | Role |
 |---|---|---|
 | HTTP server | Express 4 | Request routing, middleware, rate limiting |
-| Authentication | Firebase Admin SDK | Verify Firebase ID tokens on protected routes |
+| Authentication | Root MyChampions server | Validate MyChampions bearer sessions through `GET /me` |
 | Food data | FatSecret REST API (OAuth2) | Live food search data source |
 | Caching & catalog | Redis via ioredis + Postgres | Redis serves hot catalog/search data; Postgres is the persistent recovery source |
 | Translation | Google Translate API v2 | Multilingual query + catalog localization |
@@ -82,13 +82,13 @@ MyChampions Mobile App
 
 ## API Endpoints
 
-All endpoints requiring authentication expect a **Firebase ID token** in the `Authorization` header:
+All protected endpoints expect a **MyChampions server access token** in the `Authorization` header:
 
 ```
-Authorization: Bearer <firebase-id-token>
+Authorization: Bearer <mychampions-access-token>
 ```
 
-Admin endpoints require the `x-admin-api-key` header to match `CATALOG_ADMIN_API_KEY`.
+Admin endpoints require the `x-catalog-admin-key` header to match `CATALOG_ADMIN_API_KEY`.
 
 ---
 
@@ -113,7 +113,7 @@ Public. Returns operational metrics (request counts, error rates, latency percen
 
 ### `POST /searchFoods`
 
-**Auth required** (Firebase ID token).
+**Auth required** (MyChampions bearer session).
 
 Live food search proxied to FatSecret. Results are returned in the language inferred from the request or the `language` field.
 
@@ -152,7 +152,8 @@ Live food search proxied to FatSecret. Results are returned in the language infe
 }
 ```
 
-**Response 401:** Missing or invalid Firebase token.
+**Response 401:** Missing, invalid, revoked, or deleted MyChampions session.
+**Response 503:** Root MyChampions auth service unavailable.
 **Response 429:** Rate limit exceeded.
 **Response 502:** FatSecret API unreachable.
 
@@ -160,7 +161,7 @@ Live food search proxied to FatSecret. Results are returned in the language infe
 
 ### `POST /catalog/searchFoods`
 
-**Auth required** (Firebase ID token).
+**Auth required** (MyChampions bearer session).
 
 Searches the pre-built multilingual food catalog stored in Redis. Does not call FatSecret at query time — results come from the local catalog.
 
@@ -197,7 +198,7 @@ Public. Returns catalog readiness state (Redis connectivity, item count, last sy
 
 ### `POST /catalog/admin/sync`
 
-**Admin key required** (`x-admin-api-key` header).
+**Admin key required** (`x-catalog-admin-key` header).
 
 Triggers a manual catalog sync from FatSecret. Ingests food items, runs translation, and populates Redis. Long-running — returns immediately with a job acknowledgement.
 
@@ -215,7 +216,7 @@ Triggers a manual catalog sync from FatSecret. Ingests food items, runs translat
 
 ### `POST /catalog/admin/localization/review`
 
-**Admin key required** (`x-admin-api-key` header).
+**Admin key required** (`x-catalog-admin-key` header).
 
 Submits a localization correction for a catalog entry. Used for human review of machine-translated food names.
 
@@ -238,7 +239,7 @@ Submits a localization correction for a catalog entry. Used for human review of 
 
 ### `POST /catalog/feedback/click`
 
-**Auth required** (Firebase ID token).
+**Auth required** (MyChampions bearer session).
 
 Records a user click/selection on a food item. Used for catalog ranking signals.
 
@@ -266,13 +267,22 @@ Copy `.env.example` to `.env` and fill in the required values before running.
 cp .env.example .env
 ```
 
+For local catalog storage backed by Dockerized Postgres and Redis, use the
+parent workspace runbook at `../docs/local-catalog-db.md` and start from
+`.env.local.example`. The service `dev` script preloads `.env.local`. The local food
+database connection is:
+
+```bash
+POSTGRES_URL=postgres://mychampions_local:mychampions_local_password@localhost:15432/mychampions_food_catalog_local
+```
+
 See `.env.example` for the full list with inline documentation. The critical variables are described below.
 
 ### Required
 
 | Variable | Description |
 |---|---|
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Firebase service account credentials. Provide as a base64-encoded JSON string (`base64 -i serviceAccountKey.json \| tr -d '\n'`) or as a raw escaped JSON string. |
+| `MYCHAMPIONS_AUTH_SERVER_URL` | Root Bun server base URL used for protected-session validation through `GET /me`. Required in production; local development uses `http://localhost:3400`. |
 | `FATSECRET_CLIENT_ID` | OAuth2 client ID from [platform.fatsecret.com](https://platform.fatsecret.com/api/). |
 | `FATSECRET_CLIENT_SECRET` | OAuth2 client secret from the FatSecret developer portal. |
 | `REDIS_URL` | Redis connection URL. Example: `redis://localhost:6379`. In Docker Compose, this is overridden internally to `redis://food-catalog-redis:6379`. |
@@ -290,7 +300,7 @@ See `.env.example` for the full list with inline documentation. The critical var
 
 | Variable | Description |
 |---|---|
-| `CATALOG_ADMIN_API_KEY` | Secret key required in the `x-admin-api-key` header for all `/catalog/admin/*` endpoints. |
+| `CATALOG_ADMIN_API_KEY` | Secret key required in the `x-catalog-admin-key` header for all `/catalog/admin/*` endpoints. |
 
 ### Optional (with defaults)
 
@@ -317,48 +327,60 @@ See `.env.example` for the full list with inline documentation. The critical var
 ### Prerequisites
 
 - Node.js >= 20
-- Docker and Docker Compose (for Redis)
+- Docker and Docker Compose (for Redis and local Postgres)
 - A FatSecret API account with your VPS/dev IP allowlisted (see [Operational Notes](#operational-notes))
-- A Firebase project with a service account key
+- A reachable root MyChampions Bun server for protected endpoint validation
 
 ### Setup
 
 ```bash
-# 1. Clone the repository
-git clone <repo-url>
-cd MyChampions_Food_Microservice
-
-# 2. Install dependencies
-npm install
-
-# 3. Configure environment
-cp .env.example .env
-# Edit .env and fill in FIREBASE_SERVICE_ACCOUNT_JSON, FATSECRET_CLIENT_ID,
-# FATSECRET_CLIENT_SECRET, REDIS_URL, TRANSLATION_PROVIDER, GOOGLE_TRANSLATE_API_KEY, etc.
-
-# 4. Start Redis (and any other compose services)
-docker-compose up -d
-
-# 5. Start the development server (TypeScript, no build step)
-npm run dev
+# From the parent MyChampions workspace:
+bun run local:db:up
+cp mychampionsapi-food/.env.local.example mychampionsapi-food/.env.local
 ```
 
-The service will be available at `http://localhost:3000`.
+To mirror the production catalog Postgres data into the local Docker database:
+
+```bash
+bun run local:db:mirror
+```
+
+The mirror command overwrites only local databases ending in `_local` and reads
+production through `ssh digiocean`; it does not write to production.
+
+The existing catalog migration and Redis rebuild scripts are unchanged. Export
+the local env before running them, for example:
+
+```bash
+cd mychampionsapi-food
+set -a
+source ./.env.local
+set +a
+DRY_RUN=false CONFIRM_REDIS_REBUILD=true bun run rebuild:catalog:redis:dev
+```
+
+```bash
+# From mychampionsapi-food:
+bun install
+bun run dev
+```
+
+The local service will be available at `http://localhost:3201`.
 
 ### Available Scripts
 
 | Script | Description |
 |---|---|
-| `npm run dev` | Start with ts-node (no compile step, hot-reloadable) |
-| `npm run build` | Compile TypeScript to `dist/` |
+| `bun run dev` | Start with ts-node (no compile step, hot-reloadable) |
+| `bun run build` | Compile TypeScript to `dist/` |
 | `npm start` | Run compiled output from `dist/index.js` |
 | `npm test` | Run all tests (jest --forceExit) |
-| `npm run test:unit` | Unit tests only |
-| `npm run test:integration` | Integration tests only |
-| `npm run test:contract` | Contract tests only |
-| `npm run lint` | ESLint check |
-| `npm run lint:fix` | ESLint auto-fix |
-| `npm run catalog:shadow-validate` | Validate catalog shadow data |
+| `bun run test:unit` | Unit tests only |
+| `bun run test:integration` | Integration tests only |
+| `bun run test:contract` | Contract tests only |
+| `bun run lint` | ESLint check |
+| `bun run lint:fix` | ESLint auto-fix |
+| `bun run catalog:shadow-validate` | Validate catalog shadow data |
 
 ---
 
@@ -446,15 +468,15 @@ EXPO_PUBLIC_FOOD_SEARCH_FUNCTION_URL=https://foodservice.eduwaldo.com
 ```
 
 **Authentication flow:**
-1. The user signs in via Firebase Authentication in the mobile app.
-2. The app retrieves a fresh Firebase ID token: `await user.getIdToken()`.
-3. Every request to this microservice includes the token:
+1. The user signs in through the root MyChampions server.
+2. The root server issues a short-lived MyChampions access token.
+3. Every protected request to this microservice includes that token:
    ```
-   Authorization: Bearer <firebase-id-token>
+   Authorization: Bearer <mychampions-access-token>
    ```
-4. The microservice validates the token via Firebase Admin SDK before processing the request.
+4. The microservice forwards the token to the root server's authenticated `GET /me` boundary and uses `profile.authUid` only after successful validation.
 
-Firebase ID tokens expire after 1 hour. The mobile app should refresh the token before making requests (Firebase SDK handles this automatically when using `getIdToken(true)` or listening to `onIdTokenChanged`).
+Expired, revoked, deleted, or malformed sessions, plus a root-server HTTP 401, are rejected with HTTP 401. A root-server HTTP 404, transport failure, or server failure is rejected with HTTP 503.
 
 ---
 
@@ -465,7 +487,7 @@ Firebase ID tokens expire after 1 hour. The mobile app should refresh the token 
 | **Food Microservice** (this service) | `https://foodservice.eduwaldo.com` | FatSecret food search + multilingual Redis catalog |
 | **Exercise Microservice** | `https://exerciseservice.eduwaldo.com` | Exercise data and workout tracking backend |
 
-Both services share the same Firebase project for authentication and are deployed on the same VPS infrastructure using the blue/green deployment pattern.
+Both catalog services use the root MyChampions server as the authentication authority and are deployed on the same VPS infrastructure using the blue/green deployment pattern.
 
 ---
 

@@ -1,8 +1,9 @@
 import request from 'supertest';
 import { createApp } from '../../server';
 
-jest.mock('../../auth/firebase-auth', () => ({
-  verifyIdToken: jest.fn().mockResolvedValue({ uid: 'test-user-123' }),
+jest.mock('../../auth/mychampions-auth', () => ({
+  MyChampionsAuthError: class MyChampionsAuthError extends Error {},
+  verifyMyChampionsAccessToken: jest.fn().mockResolvedValue({ uid: 'test-user-123' }),
 }));
 
 jest.mock('../../catalog/application/sync-food-catalog.service', () => ({
@@ -14,7 +15,7 @@ const mockedSyncFoodCatalog = syncFoodCatalog as jest.MockedFunction<typeof sync
 
 describe('POST /catalog/admin/sync', () => {
   const app = createApp();
-  const VALID_AUTH = 'Bearer valid-firebase-token';
+  const VALID_AUTH = 'Bearer valid-mychampions-token';
 
   beforeEach(() => {
     jest.clearAllMocks();

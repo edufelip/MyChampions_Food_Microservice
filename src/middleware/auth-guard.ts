@@ -1,12 +1,15 @@
 /**
- * Express middleware that enforces Firebase ID token authentication.
+ * Express middleware that enforces MyChampions server session authentication.
  *
- * Expects:  Authorization: Bearer <firebase-id-token>
+ * Expects:  Authorization: Bearer <mychampions-access-token>
  * On success: attaches `res.locals.uid` with the authenticated user ID.
- * On failure: responds 401 with a safe error message.
+ * On session rejection: responds 401; on auth-authority failure: responds 503.
  */
 import { Request, Response, NextFunction } from 'express';
-import { verifyIdToken } from '../auth/firebase-auth';
+import {
+  MyChampionsAuthError,
+  verifyMyChampionsAccessToken,
+} from '../auth/mychampions-auth';
 import { logger } from '../logger';
 
 export async function authGuard(
@@ -27,14 +30,27 @@ export async function authGuard(
     return;
   }
 
-  const idToken = parts[1];
+  const accessToken = parts[1];
 
   try {
-    const decoded = await verifyIdToken(idToken);
-    res.locals['uid'] = decoded.uid;
+    const user = await verifyMyChampionsAccessToken(accessToken);
+    res.locals['uid'] = user.uid;
     next();
-  } catch {
-    logger.warn({ reason: 'token_verification_failed' }, 'Firebase ID token verification failed');
-    res.status(401).json({ error: 'unauthenticated', message: 'Invalid or expired token' });
+  } catch (error) {
+    if (error instanceof MyChampionsAuthError && error.code === 'unauthenticated') {
+      logger.warn({ reason: 'root_auth_rejected' }, 'MyChampions access token verification failed');
+      res.status(401).json({ error: 'unauthenticated', message: 'Invalid or expired token' });
+      return;
+    }
+
+    logger.warn(
+      {
+        reason: 'root_auth_unavailable',
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'MyChampions auth server is unavailable',
+    );
+    res.status(503).json({ error: 'auth_unavailable', message: 'Authentication service is unavailable' });
+    return;
   }
 }
