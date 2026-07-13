@@ -14,21 +14,52 @@ describe('MyChampions auth verifier', () => {
     });
 
     await expect(verify('access-token')).resolves.toEqual({ uid: 'user-123' });
-    expect(fetch).toHaveBeenCalledWith('http://root-server.test/me', {
-      method: 'GET',
-      headers: { authorization: 'Bearer access-token' },
-      redirect: 'error',
-    });
+    expect(fetch).toHaveBeenCalledWith(
+      'http://root-server.test/me',
+      expect.objectContaining({
+        method: 'GET',
+        headers: { authorization: 'Bearer access-token' },
+        redirect: 'error',
+        signal: expect.any(AbortSignal),
+      }),
+    );
   });
 
-  it.each([401, 404])('maps root status %i to an unauthenticated error', async (status) => {
+  it('maps root 401 to an unauthenticated error', async () => {
     const verify = createMyChampionsAuthVerifier({
       baseUrl: 'http://root-server.test',
-      fetch: jest.fn().mockResolvedValue(new Response(null, { status })),
+      fetch: jest.fn().mockResolvedValue(new Response(null, { status: 401 })),
     });
 
     await expect(verify('access-token')).rejects.toMatchObject<Partial<MyChampionsAuthError>>({
       code: 'unauthenticated',
+    });
+  });
+
+  it('maps root 404 to an unavailable error', async () => {
+    const verify = createMyChampionsAuthVerifier({
+      baseUrl: 'http://root-server.test',
+      fetch: jest.fn().mockResolvedValue(new Response(null, { status: 404 })),
+    });
+
+    await expect(verify('access-token')).rejects.toMatchObject<Partial<MyChampionsAuthError>>({
+      code: 'unavailable',
+    });
+  });
+
+  it('aborts a stalled root auth request after the configured timeout', async () => {
+    const fetch = jest.fn().mockImplementation((_url: string, init: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+    }));
+    const verifierOptions = {
+      baseUrl: 'http://root-server.test',
+      fetch,
+      timeoutMs: 10,
+    } as unknown as Parameters<typeof createMyChampionsAuthVerifier>[0];
+    const verify = createMyChampionsAuthVerifier(verifierOptions);
+
+    await expect(verify('access-token')).rejects.toMatchObject<Partial<MyChampionsAuthError>>({
+      code: 'unavailable',
     });
   });
 

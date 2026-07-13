@@ -88,7 +88,7 @@ All protected endpoints expect a **MyChampions server access token** in the `Aut
 Authorization: Bearer <mychampions-access-token>
 ```
 
-Admin endpoints require the `x-admin-api-key` header to match `CATALOG_ADMIN_API_KEY`.
+Admin endpoints require the `x-catalog-admin-key` header to match `CATALOG_ADMIN_API_KEY`.
 
 ---
 
@@ -198,7 +198,7 @@ Public. Returns catalog readiness state (Redis connectivity, item count, last sy
 
 ### `POST /catalog/admin/sync`
 
-**Admin key required** (`x-admin-api-key` header).
+**Admin key required** (`x-catalog-admin-key` header).
 
 Triggers a manual catalog sync from FatSecret. Ingests food items, runs translation, and populates Redis. Long-running — returns immediately with a job acknowledgement.
 
@@ -216,7 +216,7 @@ Triggers a manual catalog sync from FatSecret. Ingests food items, runs translat
 
 ### `POST /catalog/admin/localization/review`
 
-**Admin key required** (`x-admin-api-key` header).
+**Admin key required** (`x-catalog-admin-key` header).
 
 Submits a localization correction for a catalog entry. Used for human review of machine-translated food names.
 
@@ -300,7 +300,7 @@ See `.env.example` for the full list with inline documentation. The critical var
 
 | Variable | Description |
 |---|---|
-| `CATALOG_ADMIN_API_KEY` | Secret key required in the `x-admin-api-key` header for all `/catalog/admin/*` endpoints. |
+| `CATALOG_ADMIN_API_KEY` | Secret key required in the `x-catalog-admin-key` header for all `/catalog/admin/*` endpoints. |
 
 ### Optional (with defaults)
 
@@ -476,7 +476,7 @@ EXPO_PUBLIC_FOOD_SEARCH_FUNCTION_URL=https://foodservice.eduwaldo.com
    ```
 4. The microservice forwards the token to the root server's authenticated `GET /me` boundary and uses `profile.authUid` only after successful validation.
 
-Expired, revoked, deleted, or malformed sessions are rejected with HTTP 401. A root auth transport or server failure is rejected with HTTP 503.
+Expired, revoked, deleted, or malformed sessions, plus a root-server HTTP 401, are rejected with HTTP 401. A root-server HTTP 404, transport failure, or server failure is rejected with HTTP 503.
 
 ---
 

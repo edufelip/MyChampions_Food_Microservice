@@ -23,8 +23,10 @@ type RootAuthPayload = {
 export function createMyChampionsAuthVerifier(options: {
   baseUrl: string | null;
   fetch: typeof globalThis.fetch;
+  timeoutMs?: number;
 }): (accessToken: string) => Promise<AuthenticatedMyChampionsUser> {
   const baseUrl = options.baseUrl?.replace(/\/+$/, '') || null;
+  const timeoutMs = options.timeoutMs ?? config.upstreamTimeoutMs;
 
   return async (accessToken: string): Promise<AuthenticatedMyChampionsUser> => {
     if (!baseUrl) {
@@ -32,17 +34,22 @@ export function createMyChampionsAuthVerifier(options: {
     }
 
     let response: Response;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       response = await options.fetch(`${baseUrl}/me`, {
         method: 'GET',
         headers: { authorization: `Bearer ${accessToken}` },
         redirect: 'error',
+        signal: controller.signal,
       });
     } catch {
       throw new MyChampionsAuthError('unavailable', 'MyChampions auth server is unavailable.');
+    } finally {
+      clearTimeout(timeout);
     }
 
-    if (response.status === 401 || response.status === 404) {
+    if (response.status === 401) {
       throw new MyChampionsAuthError('unauthenticated', 'MyChampions session is invalid.');
     }
     if (!response.ok) {

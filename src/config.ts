@@ -79,7 +79,13 @@ const nodeEnv = optionalEnv('NODE_ENV', 'production');
 function parseMyChampionsAuthServerUrl(): string | null {
   const configured = optionalNullableEnv('MYCHAMPIONS_AUTH_SERVER_URL');
   if (!configured) {
-    return nodeEnv === 'development' ? 'http://localhost:3400' : null;
+    if (nodeEnv === 'development') {
+      return 'http://localhost:3400';
+    }
+    if (nodeEnv === 'production') {
+      throw new Error('MYCHAMPIONS_AUTH_SERVER_URL is required in production');
+    }
+    return null;
   }
 
   let url: URL;

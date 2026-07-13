@@ -15,6 +15,11 @@
 **When** the request reaches the Food Microservice  
 **Then** the response is HTTP 401 with `{ error: "unauthenticated" }`
 
+## AC-207.3a – Auth authority unavailable
+**Given** the configured root auth server is missing the `GET /me` route or cannot be reached
+**When** the request reaches the Food Microservice
+**Then** the response is HTTP 503 with `{ error: "auth_unavailable" }`
+
 ## AC-207.4 – Invalid input
 **Given** a request with a missing `query` or invalid `maxResults`  
 **When** the request reaches validation  

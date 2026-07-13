@@ -3,7 +3,7 @@
  *
  * Expects:  Authorization: Bearer <mychampions-access-token>
  * On success: attaches `res.locals.uid` with the authenticated user ID.
- * On failure: responds 401 with a safe error message.
+ * On session rejection: responds 401; on auth-authority failure: responds 503.
  */
 import { Request, Response, NextFunction } from 'express';
 import {
@@ -43,7 +43,13 @@ export async function authGuard(
       return;
     }
 
-    logger.warn({ reason: 'root_auth_unavailable' }, 'MyChampions auth server is unavailable');
+    logger.warn(
+      {
+        reason: 'root_auth_unavailable',
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'MyChampions auth server is unavailable',
+    );
     res.status(503).json({ error: 'auth_unavailable', message: 'Authentication service is unavailable' });
     return;
   }

@@ -25,6 +25,11 @@
 **Input:** `POST /searchFoods` with valid auth and `{ maxResults: 10 }` (no query)  
 **Expected:** HTTP 400, `{ error: "bad_request" }`
 
+## TC-207.5a – Root auth route unavailable
+**Type:** Unit
+**Input:** The configured root auth server returns HTTP 404 for `GET /me`
+**Expected:** HTTP 503, `{ error: "auth_unavailable" }`
+
 ## TC-207.6 – Invalid maxResults
 **Type:** Unit  
 **Input:** `POST /searchFoods` with valid auth and `{ query: "chicken", maxResults: -1 }`  
