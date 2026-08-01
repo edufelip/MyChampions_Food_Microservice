@@ -35,10 +35,31 @@ can't be sure a narrower run is safe.
   `Dockerfile`
 - The CI workflow files themselves (`.github/workflows/**`)
 - The classifier script itself (`scripts/ci/**`)
+- `.env.example`, `.env.local.example`, and
+  `infra/scripts/catalog-shadow-validate.js` — these are only ever read via
+  `fs.readFileSync` (not imported) by
+  `src/__tests__/unit/self-managed-auth-contract.test.ts`. Jest's
+  `--changedSince` selection walks the require/import graph, so a change to
+  a file with no import edge to the test that guards it would never
+  re-trigger that test under narrow scope. Named explicitly here rather than
+  matched by a glob — see `scripts/ci/classify-change-scope.ts` for the exact
+  literal paths.
 - Any path that isn't recognized as one of the above, `src/**`, or a
   known-inert path (`README.md`, `DEPLOYMENT.md`, `docs/**`, `*.md`,
-  `.gitignore`, `.env*.example`, `.dockerignore`, `infra/**`) — fail
+  `.gitignore`, `.dockerignore`, any other path under `infra/**`) — fail
   conservative, not silent.
+
+## Known limitation
+
+`--changedSince` selects tests via Jest's static require/import graph. A
+change that only *deletes* a module still imported elsewhere, or a
+dependency that's only read at runtime (not imported), is invisible to that
+graph and won't select the test that would have caught it under narrow
+scope. The always-full `build` job (`npm run build`) still fails on a
+dangling static import, so CI won't go green — just via a different job than
+`test`. The one identified runtime-read case (see above) is called out
+explicitly; watch for new tests added elsewhere that read fixture/config
+files via `fs` instead of `import`.
 
 ## Verifying locally
 

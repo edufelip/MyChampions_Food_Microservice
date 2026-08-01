@@ -43,6 +43,31 @@ describe('classify', () => {
     const result = classify(['src/routes/food-search.ts', 'README.md']);
     expect(result.fullScope).toBe(false);
   });
+
+  it('returns narrow scope on an empty diff', () => {
+    const result = classify([]);
+    expect(result.fullScope).toBe(false);
+    expect(result.fullScopeHits).toEqual([]);
+    expect(result.unknownHits).toEqual([]);
+  });
+
+  // src/__tests__/unit/self-managed-auth-contract.test.ts reads these files
+  // via fs.readFileSync at runtime rather than importing them, so they have
+  // no edge in Jest's require/import graph back to that test. Under narrow
+  // scope, `jest --changedSince` would never select that test for a change
+  // to these files alone, letting a real regression (e.g. a firebase
+  // reference reintroduced into .env.example) go green silently. They must
+  // force full scope, not be ignored.
+  it('forces full scope on files read by the auth-contract test via fs, not import', () => {
+    expect(classify(['.env.example']).fullScope).toBe(true);
+    expect(classify(['.env.local.example']).fullScope).toBe(true);
+    expect(classify(['infra/scripts/catalog-shadow-validate.js']).fullScope).toBe(true);
+  });
+
+  it('keeps other infra changes narrow', () => {
+    const result = classify(['infra/nginx/food-microservice.conf', 'infra/scripts/deploy.sh']);
+    expect(result.fullScope).toBe(false);
+  });
 });
 
 describe('parseNameStatusZ', () => {

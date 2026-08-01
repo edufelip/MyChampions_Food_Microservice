@@ -16,6 +16,15 @@ const FULL_SCOPE_PATTERNS: RegExp[] = [
   /^Dockerfile$/,
   /^\.github\/workflows\//,
   /^scripts\/ci\//,
+  // Read via fs at runtime (not imported) by
+  // src/__tests__/unit/self-managed-auth-contract.test.ts. Jest's
+  // --changedSince related-tests selection walks the require/import graph,
+  // so a change to a file that's only ever read through fs.readFileSync has
+  // no edge back to the test that reads it and would never be selected
+  // under narrow scope. Force full scope for these instead of ignoring them.
+  /^\.env\.example$/,
+  /^\.env\.local\.example$/,
+  /^infra\/scripts\/catalog-shadow-validate\.js$/,
 ];
 
 const IGNORED_PATTERNS: RegExp[] = [
@@ -24,8 +33,6 @@ const IGNORED_PATTERNS: RegExp[] = [
   /^docs\//,
   /\.md$/,
   /^\.gitignore$/,
-  /^\.env\.example$/,
-  /^\.env\.local\.example$/,
   /^\.dockerignore$/,
   /^infra\//,
 ];
