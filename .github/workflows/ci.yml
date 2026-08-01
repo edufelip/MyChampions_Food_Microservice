@@ -10,6 +10,54 @@ permissions:
   contents: read
 
 jobs:
+  impact:
+    name: Classify change scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      full_scope: ${{ steps.classify.outputs.full_scope }}
+      merge_base: ${{ steps.classify.outputs.merge_base }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so classify-change-scope.ts can resolve the
+          # merge-base and diff against it. Deliberately left on the default
+          # ref (the ephemeral PR merge commit for pull_request events, same
+          # as every other job in this workflow) rather than pinned to the
+          # head SHA — pinning here would make this job (and `test`, below)
+          # validate a different tree than `lint`/`build`/`docker-build`
+          # build and ship.
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Pushes to main are the authoritative build (post-merge or a direct
+      # push), so they always run the full suite. Only PRs get narrowed. The
+      # merge-base is computed explicitly inside classify-change-scope.ts
+      # (not diffed against the base branch tip) so commits that land on main
+      # after a PR branched off are never misattributed to that PR's diff.
+      - id: classify
+        name: Classify changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            echo "full_scope=true" >> "$GITHUB_OUTPUT"
+            echo "merge_base=" >> "$GITHUB_OUTPUT"
+          else
+            npx ts-node scripts/ci/classify-change-scope.ts "$BASE_SHA" "$HEAD_SHA"
+          fi
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -34,10 +82,15 @@ jobs:
     name: Unit and Integration Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [lint]
+    needs: [lint, impact]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Same tree as every other job (default ref); full history only so
+          # `jest --changedSince=$MERGE_BASE` can diff against a commit that
+          # a depth-1 clone wouldn't have. See the `impact` job above.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,7 +102,6 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        run: npm test -- --coverage
         env:
           NODE_ENV: test
           FIREBASE_SERVICE_ACCOUNT_JSON: eyJ0eXBlIjoic2VydmljZV9hY2NvdW50IiwicHJvamVjdF9pZCI6InRlc3QifQ==
@@ -59,6 +111,16 @@ jobs:
           ENABLE_CATALOG_INGESTION: "false"
           ENABLE_TRANSLATION_PIPELINE: "false"
           GOOGLE_TRANSLATE_API_KEY: test
+          FULL_SCOPE: ${{ needs.impact.outputs.full_scope }}
+          MERGE_BASE: ${{ needs.impact.outputs.merge_base }}
+        run: |
+          if [[ "$FULL_SCOPE" != "true" && -n "$MERGE_BASE" ]]; then
+            echo "Running tests related to changes since $MERGE_BASE"
+            npx jest --changedSince="$MERGE_BASE" --passWithNoTests --coverage --forceExit
+          else
+            echo "Running full test suite"
+            npm test -- --coverage
+          fi
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
