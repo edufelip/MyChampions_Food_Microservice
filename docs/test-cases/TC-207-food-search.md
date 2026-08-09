@@ -2,12 +2,12 @@
 
 ## TC-207.1 – Happy path: search returns results
 **Type:** Integration  
-**Input:** `POST /searchFoods` with valid auth and `{ query: "chicken", maxResults: 10 }`  
+**Input:** `POST /searchFoods` with valid auth and `{ query: "chicken", region: "US", language: "en", maxResults: 10 }`
 **Expected:** HTTP 200, `{ results: [...] }` with ≥1 item
 
 ## TC-207.2 – Happy path: empty results
 **Type:** Integration  
-**Input:** `POST /searchFoods` with valid auth and query that returns no matches  
+**Input:** `POST /searchFoods` with valid auth, required `region` and `language`, and a query that returns no matches
 **Expected:** HTTP 200, `{ results: [] }`
 
 ## TC-207.3 – Missing Authorization header
@@ -67,7 +67,7 @@ optional diagnostic `message` is allowed.
 **Type:** Contract  
 **Input:** Full request cycle as modelled by `food-search-source.ts`  
 **Expected:** HTTP 200 preserves the `results: FatSecretFoodItem[]` consumer
-array and may include the service-owned `meta`, `total`, `page`, `pageSize`, and
+array and includes the service-owned `meta`, `total`, `page`, `pageSize`, and
 `source` fields.
 
 ---
@@ -82,18 +82,18 @@ TOKEN="<mychampions-access-token>"       # Replace with a root-server session to
 curl -s -X POST "$BASE_URL/searchFoods" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"query":"chicken","maxResults":5}' | jq .
+  -d '{"query":"chicken","region":"US","language":"en","maxResults":5}' | jq .
 
 # TC-207.3 – Missing auth
 curl -s -X POST "$BASE_URL/searchFoods" \
   -H "Content-Type: application/json" \
-  -d '{"query":"chicken","maxResults":5}' | jq .
+  -d '{"query":"chicken","region":"US","language":"en","maxResults":5}' | jq .
 
 # TC-207.5 – Missing query
 curl -s -X POST "$BASE_URL/searchFoods" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"maxResults":5}' | jq .
+  -d '{"region":"US","language":"en","maxResults":5}' | jq .
 
 # TC-207.10 – Health check
 curl -s "$BASE_URL/health" | jq .
