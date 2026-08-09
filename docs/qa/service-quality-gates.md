@@ -12,8 +12,10 @@ Required gates:
 - `npm run test:integration`
 - `npm run test:contract`
 
-All workflow jobs check out and verify the same exact PR head; the impact job
-still uses the base/head SHAs only for scope classification. The contract suite
+All workflow jobs check out and verify the same exact workflow commit; the
+impact job still uses the base/head SHAs only for scope classification. On pull
+requests that commit is the pull-request head SHA; on push runs it is
+`github.sha`. The contract suite
 drives the real auth middleware, unified-search service, and HTTP controller
 through catalog/provider boundary doubles. It locks missing,
 invalid, and unavailable authentication, a complete populated response
