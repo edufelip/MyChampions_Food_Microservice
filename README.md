@@ -133,7 +133,7 @@ Live food search proxied to FatSecret. Results are returned in the language infe
 | `query` | string | yes | Search term |
 | `region` | string | yes | FatSecret catalog region, such as `"US"` |
 | `language` | string | yes | BCP-47 language code (e.g. `"pt"`, `"es"`, `"en"`) |
-| `maxResults` | number | no | Number of results (capped by `MAX_RESULTS_LIMIT`, default 50) |
+| `maxResults` | number | yes | Number of results (capped by `MAX_RESULTS_LIMIT`, default limit 50) |
 | `page` | number | no | One-based page number (default 1) |
 
 **Response 200:**
@@ -179,10 +179,15 @@ Searches the pre-built multilingual food catalog stored in Redis. Does not call 
 ```json
 {
   "query": "arroz",
-  "language": "pt",
-  "maxResults": 20
+  "lang": "pt",
+  "page": 1,
+  "pageSize": 20,
+  "region": "BR"
 }
 ```
+
+`lang` and `query` are required. `page` and `pageSize` default to `1` and the
+configured catalog page size; `region` is optional and defaults to `US`.
 
 **Response 200:** Same shape as `/searchFoods`.
 
