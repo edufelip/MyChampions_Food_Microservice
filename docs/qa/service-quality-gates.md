@@ -12,6 +12,11 @@ Required gates:
 - `npm run test:integration`
 - `npm run test:contract`
 
-The contract suite locks unauthenticated `401` behavior, the `{ results: [] }`
-consumer shape, health metadata, and secret isolation. Tests use provider and
-auth doubles only; no FatSecret, Redis, Postgres, or production writes occur.
+The contract suite drives the real auth middleware, unified-search service, and
+HTTP controller through catalog/provider boundary doubles. It locks missing,
+invalid, and unavailable authentication, a complete populated response
+envelope (including the mobile `results` array), health metadata, normalized
+provider arguments, and secret isolation. No FatSecret, Redis, Postgres, or
+production writes occur in the contract lane. The integration test job may run
+the full suite or the changed-test subset selected by `impact`; the contract
+job always runs separately after lint.

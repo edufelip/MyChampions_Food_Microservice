@@ -30,7 +30,8 @@ the response may also include a diagnostic `message`.
 ## TC-207.5a – Root auth route unavailable
 **Type:** Unit
 **Input:** The configured root auth server returns HTTP 404 for `GET /me`
-**Expected:** HTTP 503, `{ error: "auth_unavailable" }`
+**Expected:** HTTP 503 with machine-readable `{ error: "auth_unavailable" }`; an
+optional diagnostic `message` is allowed.
 
 ## TC-207.6 – Invalid maxResults
 **Type:** Unit  
@@ -65,7 +66,9 @@ the response may also include a diagnostic `message`.
 ## TC-207.12 – Contract compatibility
 **Type:** Contract  
 **Input:** Full request cycle as modelled by `food-search-source.ts`  
-**Expected:** Response shape matches `{ results: FatSecretFoodItem[] }` on 200
+**Expected:** HTTP 200 preserves the `results: FatSecretFoodItem[]` consumer
+array and may include the service-owned `meta`, `total`, `page`, `pageSize`, and
+`source` fields.
 
 ---
 
