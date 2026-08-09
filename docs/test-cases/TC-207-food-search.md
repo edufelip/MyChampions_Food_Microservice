@@ -13,12 +13,14 @@
 ## TC-207.3 – Missing Authorization header
 **Type:** Unit  
 **Input:** `POST /searchFoods` with no Authorization header  
-**Expected:** HTTP 401, `{ error: "unauthenticated" }`
+**Expected:** HTTP 401 with machine-readable `{ error: "unauthenticated" }`;
+the response may also include a diagnostic `message`.
 
 ## TC-207.4 – Invalid MyChampions access token
 **Type:** Unit  
 **Input:** `POST /searchFoods` with `Authorization: Bearer invalid-token`  
-**Expected:** HTTP 401, `{ error: "unauthenticated" }`
+**Expected:** HTTP 401 with machine-readable `{ error: "unauthenticated" }`;
+the response may also include a diagnostic `message`.
 
 ## TC-207.5 – Missing query field
 **Type:** Unit  

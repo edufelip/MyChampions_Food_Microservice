@@ -130,6 +130,27 @@ jobs:
           path: coverage/
           retention-days: 7
 
+  contract:
+    name: Consumer contract tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lint]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run consumer contract tests
+        run: npm run test:contract
+
   security:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -155,7 +176,7 @@ jobs:
     name: TypeScript Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [test]
+    needs: [test, contract]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
