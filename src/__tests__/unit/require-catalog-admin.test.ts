@@ -28,15 +28,61 @@ describe('requireCatalogAdmin', () => {
     process.env.CATALOG_ADMIN_API_KEY = originalAdminKey;
   });
 
-  it('skips admin key check when ingestion feature is disabled', async () => {
+  // Regression for ET-59: the admin-key gate must never be coupled to the
+  // unrelated ENABLE_CATALOG_INGESTION flag. ENABLE_CATALOG_INGESTION=false
+  // is the documented default across .env.example, .env.local, and
+  // .env.local.example, so this is the state the gate must hold up in.
+  it('returns 403 for missing key even when ingestion feature is disabled', async () => {
+    process.env.ENABLE_CATALOG_INGESTION = 'false';
+    process.env.CATALOG_ADMIN_API_KEY = 'secret';
+    const { requireCatalogAdmin: middleware } = await import('../../middleware/require-catalog-admin');
+
+    const req = mockReq();
+    const { res, statusFn, jsonFn } = mockRes();
+    middleware(req as Request, res as Response, next);
+    expect(statusFn).toHaveBeenCalledWith(403);
+    expect(jsonFn).toHaveBeenCalledWith({ error: 'forbidden', message: 'Missing catalog admin key' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 for an invalid key even when ingestion feature is disabled', async () => {
+    process.env.ENABLE_CATALOG_INGESTION = 'false';
+    process.env.CATALOG_ADMIN_API_KEY = 'secret';
+    const { requireCatalogAdmin: middleware } = await import('../../middleware/require-catalog-admin');
+
+    const req = mockReq('wrong-key');
+    const { res, statusFn } = mockRes();
+    middleware(req as Request, res as Response, next);
+    expect(statusFn).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('calls next() when a valid key is presented while ingestion is disabled', async () => {
+    process.env.ENABLE_CATALOG_INGESTION = 'false';
+    process.env.CATALOG_ADMIN_API_KEY = 'secret';
+    const { requireCatalogAdmin: middleware } = await import('../../middleware/require-catalog-admin');
+
+    const req = mockReq('secret');
+    const { res, statusFn } = mockRes();
+    middleware(req as Request, res as Response, next);
+    expect(next).toHaveBeenCalled();
+    expect(statusFn).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 catalog_admin_misconfigured when no admin key is configured, regardless of ingestion flag', async () => {
     process.env.ENABLE_CATALOG_INGESTION = 'false';
     process.env.CATALOG_ADMIN_API_KEY = '';
     const { requireCatalogAdmin: middleware } = await import('../../middleware/require-catalog-admin');
 
     const req = mockReq();
-    const { res } = mockRes();
+    const { res, statusFn, jsonFn } = mockRes();
     middleware(req as Request, res as Response, next);
-    expect(next).toHaveBeenCalled();
+    expect(statusFn).toHaveBeenCalledWith(503);
+    expect(jsonFn).toHaveBeenCalledWith({
+      error: 'catalog_admin_misconfigured',
+      message: 'Catalog admin key is not configured',
+    });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it('returns 403 for missing key when ingestion is enabled', async () => {

@@ -2,11 +2,6 @@ import { NextFunction, Request, Response } from 'express';
 import { config } from '../config';
 
 export function requireCatalogAdmin(req: Request, res: Response, next: NextFunction): void {
-  if (!config.enableCatalogIngestion) {
-    next();
-    return;
-  }
-
   if (!config.catalogAdminApiKey) {
     res.status(503).json({
       error: 'catalog_admin_misconfigured',

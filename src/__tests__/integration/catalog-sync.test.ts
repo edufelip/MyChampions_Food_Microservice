@@ -26,7 +26,7 @@ describe('POST /catalog/admin/sync', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 503 when ingestion is disabled', async () => {
+  it('returns 503 catalog_admin_misconfigured without an admin key header when no key is configured', async () => {
     const res = await request(app)
       .post('/catalog/admin/sync')
       .set('Authorization', VALID_AUTH)
@@ -34,9 +34,62 @@ describe('POST /catalog/admin/sync', () => {
 
     expect(res.status).toBe(503);
     expect(res.body).toEqual({
+      error: 'catalog_admin_misconfigured',
+      message: 'Catalog admin key is not configured',
+    });
+  });
+
+  // Regression for ET-59: requireCatalogAdmin must reject a missing admin key
+  // with 403 even when ENABLE_CATALOG_INGESTION is false (the documented
+  // default) — it must never silently call next() because of that flag.
+  it('returns 403 forbidden without an admin key header, even when ingestion is disabled', async () => {
+    const originalEnabled = process.env.ENABLE_CATALOG_INGESTION;
+    const originalAdminKey = process.env.CATALOG_ADMIN_API_KEY;
+    process.env.ENABLE_CATALOG_INGESTION = 'false';
+    process.env.CATALOG_ADMIN_API_KEY = 'secret';
+    jest.resetModules();
+
+    const { createApp: createDisabledApp } = await import('../../server');
+    const disabledApp = createDisabledApp();
+
+    const res = await request(disabledApp)
+      .post('/catalog/admin/sync')
+      .set('Authorization', VALID_AUTH)
+      .send({});
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: 'forbidden', message: 'Missing catalog admin key' });
+
+    process.env.ENABLE_CATALOG_INGESTION = originalEnabled;
+    process.env.CATALOG_ADMIN_API_KEY = originalAdminKey;
+    jest.resetModules();
+  });
+
+  it('returns 503 catalog_ingestion_disabled from the controller when a valid admin key is presented but ingestion is disabled', async () => {
+    const originalEnabled = process.env.ENABLE_CATALOG_INGESTION;
+    const originalAdminKey = process.env.CATALOG_ADMIN_API_KEY;
+    process.env.ENABLE_CATALOG_INGESTION = 'false';
+    process.env.CATALOG_ADMIN_API_KEY = 'secret';
+    jest.resetModules();
+
+    const { createApp: createDisabledApp } = await import('../../server');
+    const disabledApp = createDisabledApp();
+
+    const res = await request(disabledApp)
+      .post('/catalog/admin/sync')
+      .set('Authorization', VALID_AUTH)
+      .set('x-catalog-admin-key', 'secret')
+      .send({});
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({
       error: 'catalog_ingestion_disabled',
       message: 'Catalog ingestion is disabled',
     });
+
+    process.env.ENABLE_CATALOG_INGESTION = originalEnabled;
+    process.env.CATALOG_ADMIN_API_KEY = originalAdminKey;
+    jest.resetModules();
   });
 
   it('returns 200 when ingestion is enabled and admin key is valid', async () => {
