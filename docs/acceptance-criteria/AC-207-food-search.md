@@ -13,12 +13,14 @@
 ## AC-207.3 – Unauthenticated request
 **Given** a request with a missing, invalid, revoked, or deleted MyChampions access token
 **When** the request reaches the Food Microservice  
-**Then** the response is HTTP 401 with `{ error: "unauthenticated" }`
+**Then** the response is HTTP 401 with machine-readable `{ error: "unauthenticated" }`;
+an additional diagnostic `message` is allowed.
 
 ## AC-207.3a – Auth authority unavailable
 **Given** the configured root auth server is missing the `GET /me` route or cannot be reached
 **When** the request reaches the Food Microservice
-**Then** the response is HTTP 503 with `{ error: "auth_unavailable" }`
+**Then** the response is HTTP 503 with machine-readable `{ error: "auth_unavailable" }`;
+an additional diagnostic `message` is allowed.
 
 ## AC-207.4 – Invalid input
 **Given** a request with a missing `query` or invalid `maxResults`  

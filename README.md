@@ -121,34 +121,44 @@ Live food search proxied to FatSecret. Results are returned in the language infe
 ```json
 {
   "query": "chicken breast",
-  "language": "pt",
+  "region": "US",
+  "language": "en",
   "maxResults": 10,
-  "pageNumber": 0
+  "page": 1
 }
 ```
 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `query` | string | yes | Search term |
-| `language` | string | no | BCP-47 language code (e.g. `"pt"`, `"es"`, `"en"`). Defaults to `"en"`. |
-| `maxResults` | number | no | Number of results (capped by `MAX_RESULTS_LIMIT`, default 50) |
-| `pageNumber` | number | no | Pagination offset (default 0) |
+| `region` | string | yes | FatSecret catalog region, such as `"US"` |
+| `language` | string | yes | BCP-47 language code (e.g. `"pt"`, `"es"`, `"en"`) |
+| `maxResults` | number | yes | Number of results (capped by `MAX_RESULTS_LIMIT`, default limit 50) |
+| `page` | number | no | One-based page number (default 1) |
 
 **Response 200:**
 ```json
 {
-  "foods": [
+  "results": [
     {
-      "food_id": "4820",
-      "food_name": "Peito de Frango",
-      "food_type": "Generic",
-      "food_url": "https://...",
-      "food_description": "Per 100g - Calories: 165kcal | Fat: 3.57g | Carbs: 0g | Protein: 31.02g"
+      "id": "4820",
+      "name": "Chicken Breast",
+      "carbohydrate": 0,
+      "protein": 31.02,
+      "fat": 3.57,
+      "serving": 100
     }
   ],
-  "total_results": 48,
-  "page_number": 0,
-  "max_results": 10
+  "meta": {
+    "lang": "en",
+    "normalizedQuery": "chicken breast",
+    "rewriteApplied": false,
+    "tookMs": 12
+  },
+  "total": 48,
+  "page": 1,
+  "pageSize": 10,
+  "source": "fatsecret"
 }
 ```
 
@@ -169,10 +179,15 @@ Searches the pre-built multilingual food catalog stored in Redis. Does not call 
 ```json
 {
   "query": "arroz",
-  "language": "pt",
-  "maxResults": 20
+  "lang": "pt",
+  "page": 1,
+  "pageSize": 20,
+  "region": "BR"
 }
 ```
+
+`lang` and `query` are required. `page` and `pageSize` default to `1` and the
+configured catalog page size; `region` is optional and defaults to `US`.
 
 **Response 200:** Same shape as `/searchFoods`.
 
@@ -460,12 +475,11 @@ FatSecret OAuth2 tokens are cached in memory. The `TOKEN_EXPIRY_MARGIN_SECONDS` 
 
 ## Mobile App Integration
 
-The MyChampions React Native / Expo mobile app connects to this service using:
-
-**Environment variable in the mobile app:**
-```
-EXPO_PUBLIC_FOOD_SEARCH_FUNCTION_URL=https://foodservice.eduwaldo.com
-```
+The MyChampions React Native / Expo mobile app uses the root MyChampions
+server's authenticated `/integrations/food/search` boundary. It does not call
+this microservice's `/searchFoods` endpoint directly. The old
+`EXPO_PUBLIC_FOOD_SEARCH_FUNCTION_URL` direct-service integration is legacy and
+must not be used for the current mobile flow.
 
 **Authentication flow:**
 1. The user signs in through the root MyChampions server.

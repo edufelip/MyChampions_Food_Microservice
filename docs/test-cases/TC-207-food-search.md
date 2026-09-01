@@ -2,23 +2,25 @@
 
 ## TC-207.1 – Happy path: search returns results
 **Type:** Integration  
-**Input:** `POST /searchFoods` with valid auth and `{ query: "chicken", maxResults: 10 }`  
+**Input:** `POST /searchFoods` with valid auth and `{ query: "chicken", region: "US", language: "en", maxResults: 10 }`
 **Expected:** HTTP 200, `{ results: [...] }` with ≥1 item
 
 ## TC-207.2 – Happy path: empty results
 **Type:** Integration  
-**Input:** `POST /searchFoods` with valid auth and query that returns no matches  
+**Input:** `POST /searchFoods` with valid auth and `{ query: "no-match", region: "US", language: "en", maxResults: 10 }`
 **Expected:** HTTP 200, `{ results: [] }`
 
 ## TC-207.3 – Missing Authorization header
 **Type:** Unit  
 **Input:** `POST /searchFoods` with no Authorization header  
-**Expected:** HTTP 401, `{ error: "unauthenticated" }`
+**Expected:** HTTP 401 with machine-readable `{ error: "unauthenticated" }`;
+the response may also include a diagnostic `message`.
 
 ## TC-207.4 – Invalid MyChampions access token
 **Type:** Unit  
 **Input:** `POST /searchFoods` with `Authorization: Bearer invalid-token`  
-**Expected:** HTTP 401, `{ error: "unauthenticated" }`
+**Expected:** HTTP 401 with machine-readable `{ error: "unauthenticated" }`;
+the response may also include a diagnostic `message`.
 
 ## TC-207.5 – Missing query field
 **Type:** Unit  
@@ -28,26 +30,27 @@
 ## TC-207.5a – Root auth route unavailable
 **Type:** Unit
 **Input:** The configured root auth server returns HTTP 404 for `GET /me`
-**Expected:** HTTP 503, `{ error: "auth_unavailable" }`
+**Expected:** HTTP 503 with machine-readable `{ error: "auth_unavailable" }`; an
+optional diagnostic `message` is allowed.
 
 ## TC-207.6 – Invalid maxResults
 **Type:** Unit  
-**Input:** `POST /searchFoods` with valid auth and `{ query: "chicken", maxResults: -1 }`  
+**Input:** `POST /searchFoods` with valid auth and `{ query: "chicken", region: "US", language: "en", maxResults: -1 }`
 **Expected:** HTTP 400, `{ error: "bad_request" }`
 
 ## TC-207.7 – maxResults capped at 50
 **Type:** Unit  
-**Input:** `POST /searchFoods` with valid auth and `{ query: "chicken", maxResults: 999 }`  
+**Input:** `POST /searchFoods` with valid auth and `{ query: "chicken", region: "US", language: "en", maxResults: 999 }`
 **Expected:** HTTP 200 (server internally caps to 50), no error
 
 ## TC-207.8 – FatSecret quota exceeded
 **Type:** Integration (mocked)  
-**Input:** FatSecret returns error code 22 (quota exceeded)  
+**Input:** `POST /searchFoods` with valid auth and `{ query: "chicken", region: "US", language: "en", maxResults: 10 }`; FatSecret returns error code 22 (quota exceeded)
 **Expected:** HTTP 200, `{ error: "quota_exceeded" }`
 
 ## TC-207.9 – Upstream network failure
 **Type:** Integration (mocked)  
-**Input:** FatSecret network call times out  
+**Input:** `POST /searchFoods` with valid auth and `{ query: "chicken", region: "US", language: "en", maxResults: 10 }`; FatSecret network call times out
 **Expected:** HTTP 500, `{ error: "internal_error" }`, no secrets in body
 
 ## TC-207.10 – Health endpoint
@@ -57,13 +60,15 @@
 
 ## TC-207.11 – Rate limit enforcement
 **Type:** Integration  
-**Input:** >60 requests from same IP within 60 seconds  
+**Input:** >60 valid `POST /searchFoods` requests with `{ query: "chicken", region: "US", language: "en", maxResults: 10 }` from the same IP within 60 seconds
 **Expected:** HTTP 429 on requests exceeding the limit
 
 ## TC-207.12 – Contract compatibility
 **Type:** Contract  
-**Input:** Full request cycle as modelled by `food-search-source.ts`  
-**Expected:** Response shape matches `{ results: FatSecretFoodItem[] }` on 200
+**Input:** Full request cycle as modelled by `food-search-source.ts`, including `{ query: "chicken", region: "US", language: "en", maxResults: 10 }`
+**Expected:** HTTP 200 preserves the `results: FatSecretFoodItem[]` consumer
+array and includes the service-owned `meta`, `total`, `page`, `pageSize`, and
+`source` fields.
 
 ---
 
@@ -77,18 +82,18 @@ TOKEN="<mychampions-access-token>"       # Replace with a root-server session to
 curl -s -X POST "$BASE_URL/searchFoods" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"query":"chicken","maxResults":5}' | jq .
+  -d '{"query":"chicken","region":"US","language":"en","maxResults":5}' | jq .
 
 # TC-207.3 – Missing auth
 curl -s -X POST "$BASE_URL/searchFoods" \
   -H "Content-Type: application/json" \
-  -d '{"query":"chicken","maxResults":5}' | jq .
+  -d '{"query":"chicken","region":"US","language":"en","maxResults":5}' | jq .
 
 # TC-207.5 – Missing query
 curl -s -X POST "$BASE_URL/searchFoods" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"maxResults":5}' | jq .
+  -d '{"region":"US","language":"en","maxResults":5}' | jq .
 
 # TC-207.10 – Health check
 curl -s "$BASE_URL/health" | jq .
