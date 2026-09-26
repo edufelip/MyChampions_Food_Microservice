@@ -26,6 +26,30 @@ The Food Microservice serves two main functions:
 1. **Live FatSecret food search** — Authenticated users query food items in real time. The service forwards the request to FatSecret, caches translation results in Redis, and returns results in the user's language.
 2. **Multilingual food catalog** — A pre-built, language-aware catalog of foods is ingested from FatSecret, translated, persisted to Postgres, and served from Redis as the hot cache. If Redis is empty or unready and `POSTGRES_URL` is configured, the service rebuilds the Redis catalog from Postgres before serving catalog search.
 
+### Offline nutrition description recovery (ET-228)
+
+The service also contains a review-only offline tool for sanitized provider
+rows rejected by the existing nutrition mapper. It never changes live search,
+catalog storage, Redis, Postgres, or ingestion repositories. Existing accepted
+rows are excluded; deterministic parsing and fixed-point validation run before
+an optional pinned TypeSafe span-selection request. Standard commands are
+deterministic or replay-only and make no network calls.
+
+```bash
+npm run recovery:typecheck
+npm run recovery:evaluate -- --input testdata/nutrition-recovery/development.jsonl --mode replay --responses testdata/nutrition-recovery/responses.jsonl --output /tmp/nutrition-recovery-run-001
+npm run recovery:report -- --run /tmp/nutrition-recovery-run-001
+npm run recovery:review -- --run /tmp/nutrition-recovery-run-001 --source-id SOURCE_ID --suggestion-hash CURRENT_HASH --decision accept --reviewer REVIEWER_LABEL --note 'Reviewed source spans'
+npm run recovery:export-reviewed -- --run /tmp/nutrition-recovery-run-001 --output /tmp/reviewed-proposals-001.jsonl
+```
+
+Live mode requires `--mode live --allow-provider-calls --max-requests N
+--max-input-tokens N`, `TYPESAFE_API_KEY`, and a separately approved budget.
+Review acceptance exports a `nutrition-recovery-reviewed-proposal.v1` file; it
+does not import data. Run directories contain sanitized inputs/results and a
+self-contained escaped HTML report. No mobile localization changes apply
+because the report is an operator artifact rather than app-facing copy.
+
 Mobile food search is served through the root Bun/Elysia server's authenticated `/integrations/food/search` route. This service remains available for protected catalog and operator workflows and validates the same MyChampions bearer sessions through the root server.
 
 ---
