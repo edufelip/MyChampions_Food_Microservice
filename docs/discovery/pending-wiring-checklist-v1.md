@@ -11,6 +11,8 @@
 | W-005 | Production catalog worker deployment | ⬜ Pending approval | Verify root auth reachability, catalog health, and FatSecret allowlist after deploy approval. |
 | W-006 | FatSecret provider-live smoke | ⬜ Pending approval | Requires provider credentials and may consume quota. |
 | W-007 | Horizontal scale and monitoring | 🔄 Deferred | Redis/cache and uptime strategy are operational work after production deployment. |
+| W-008 | Offline nutrition recovery CLI and report | ✅ Done locally | ET-228 provides deterministic/replay evaluation and hash-bound review/export; it has no runtime or catalog wiring. |
+| W-009 | Provider-boundary raw-row capture and any catalog import | ⬜ Pending approval | Rejected descriptions are discarded by the existing mapper path; future capture/import requires a separate design, data review, and activation gate. |
 
 ## Legend
 

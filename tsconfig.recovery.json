@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "./dist-recovery",
+    "noEmit": true
+  },
+  "include": ["src/catalog/recovery/**/*.ts", "scripts/nutrition-recovery.ts"]
+}

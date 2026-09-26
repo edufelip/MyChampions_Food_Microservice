@@ -44,3 +44,16 @@ Catalog ingestion and localization administration retain their independent
 The service returns HTTP 200 with `{ error: "quota_exceeded" }` when the
 FatSecret quota is exhausted. Internal rate limiting remains HTTP 429 with
 `too_many_requests`.
+
+## DR-006 – Nutrition recovery is offline and review-only
+
+**Date:** 2026-09-26
+**Status:** Active
+
+ET-228 implements an explicit-input, deterministic/replay-first recovery tool
+for rows rejected by the existing mapper. The existing mapper remains the
+eligibility boundary. TypeSafe may choose existing numeric spans, while code
+owns units, bounds, arithmetic, hashes, and abstention. Run artifacts and
+review decisions stay local; accepted proposals never call catalog import
+repositories. Runtime raw-row capture, mobile wiring, and provider-live
+evaluation remain pending separate approval and data gates.

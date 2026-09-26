@@ -17,7 +17,12 @@
     "migrate:catalog:postgres": "node dist/catalog/infrastructure/postgres/migrate-redis-catalog-to-postgres.js",
     "migrate:catalog:postgres:dev": "ts-node src/catalog/infrastructure/postgres/migrate-redis-catalog-to-postgres.ts",
     "rebuild:catalog:redis": "node dist/catalog/infrastructure/postgres/rebuild-redis-catalog-from-postgres.js",
-    "rebuild:catalog:redis:dev": "ts-node src/catalog/infrastructure/postgres/rebuild-redis-catalog-from-postgres.ts"
+    "rebuild:catalog:redis:dev": "ts-node src/catalog/infrastructure/postgres/rebuild-redis-catalog-from-postgres.ts",
+    "recovery:evaluate": "ts-node scripts/nutrition-recovery.ts evaluate",
+    "recovery:report": "ts-node scripts/nutrition-recovery.ts report",
+    "recovery:review": "ts-node scripts/nutrition-recovery.ts review",
+    "recovery:export-reviewed": "ts-node scripts/nutrition-recovery.ts export-reviewed",
+    "recovery:typecheck": "tsc --noEmit --project tsconfig.recovery.json"
   },
   "dependencies": {
     "axios": "^1.13.6",
