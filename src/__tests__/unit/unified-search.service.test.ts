@@ -54,4 +54,35 @@ describe('unifiedSearchFoods', () => {
     expect(mockSearchFoodsClient).toHaveBeenCalledWith('query', 10, 'US', 'en');
     expect(mockAutoIngestCatalogClient).toHaveBeenCalled();
   });
+
+  it('returns an empty catalog response without calling fatsecret when FATSECRET_ENABLED=false', async () => {
+    const previous = process.env['FATSECRET_ENABLED'];
+    process.env['FATSECRET_ENABLED'] = 'false';
+    try {
+      const mockCatalogSearchService = jest.fn().mockResolvedValue({
+        total: 0,
+        results: [],
+        meta: { normalizedQuery: 'cat' },
+      });
+      const mockSearchFoodsClient = jest.fn();
+
+      const service = createUnifiedSearchFoodsService({
+        catalogSearchService: mockCatalogSearchService,
+        translator: {} as Translator,
+        cacheRepo: {} as any,
+        searchFoodsClient: mockSearchFoodsClient,
+        autoIngestCatalogClient: jest.fn(),
+      });
+
+      const response = await service('query', 10, 'US', 'pt', 1);
+
+      expect(response.source).toBe('catalog');
+      expect(response.total).toBe(0);
+      expect(response.results).toEqual([]);
+      expect(mockSearchFoodsClient).not.toHaveBeenCalled();
+    } finally {
+      if (previous === undefined) delete process.env['FATSECRET_ENABLED'];
+      else process.env['FATSECRET_ENABLED'] = previous;
+    }
+  });
 });

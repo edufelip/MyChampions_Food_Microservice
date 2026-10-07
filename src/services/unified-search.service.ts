@@ -57,6 +57,18 @@ export function createUnifiedSearchFoodsService(deps: UnifiedSearchDeps) {
     };
   }
 
+    // FatSecret switched off: the stored catalog is the only source.
+    if (process.env['FATSECRET_ENABLED'] === 'false') {
+      return {
+        results: [],
+        meta: catalogResponse.meta,
+        total: 0,
+        page,
+        pageSize: maxResults,
+        source: 'catalog',
+      };
+    }
+
     // 2. Fallback to FatSecret
     let englishQuery = query;
     if (lang !== 'en') {
